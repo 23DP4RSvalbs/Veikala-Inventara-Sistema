@@ -1,2 +1,3 @@
-# java-console
-project template for Java CLI app
+----------------------
+Veikala-Inventāra-Sistēma
+
