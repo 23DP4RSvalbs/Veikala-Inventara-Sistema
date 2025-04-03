@@ -30,6 +30,41 @@ public class InventoryManager {
         System.out.println("Produkts pievienots:" + product);
     }
 
+
+    public void editProduct(int id, String name, String category, double price, int quantity) {
+
+        Product product = findProductById(id);
+        if (product != null) {
+            if (Helper.validateProductName(name)) {
+                product.setName(name);
+            }
+            product.setCategory(category);
+            if (Helper.validatePrice(price)) {
+                product.setPrice(price);
+            }
+            if (Helper.validateQuantity(quantity)) {
+                product.setQuantity(quantity);
+            }
+            System.out.println("Produkts atjaunināts: " + product);
+        } else {
+            System.out.println("Produkts nav atrasts!");
+        }
+    }
+
+    public void deleteProduct(int id) {
+        
+        Product product = findProductById(id);
+        if (product != null) {
+            products.remove(product);
+            System.out.println("Produkts izdzēsts: " + product);
+        } else {
+            System.out.println("Produkts nav atrasts!");
+        }
+    }
+
+
+
+
     public void showAllProducts() {
 
     
@@ -44,7 +79,18 @@ public class InventoryManager {
                 
             }
         }
-
-
+    }
+    private Product findProductById(int id) {
+        for (Product product : products) {
+            if (product.getId() == id) {
+                return product;
+            }
+        }
+        return null;
     }
 }
+
+
+
+
+
