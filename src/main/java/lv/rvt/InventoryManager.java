@@ -52,7 +52,7 @@ public class InventoryManager {
     }
 
     public void deleteProduct(int id) {
-        
+
         Product product = findProductById(id);
         if (product != null) {
             products.remove(product);
@@ -80,6 +80,48 @@ public class InventoryManager {
             }
         }
     }
+
+    
+    public void searchProducts(String keyword) {
+
+        List<Product> found = new ArrayList<>();
+        for (Product product : products) {
+            if (product.getName().toLowerCase().contains(keyword.toLowerCase())) {
+                found.add(product);
+            }
+        }
+        if (found.isEmpty()) {
+            System.out.println("Nav atrasts neviens produkts!");
+        } else {
+            for (Product product : found) {
+                System.out.println(product);
+            }
+        }
+    }
+
+    public void filterProductsByCategory(String category) {
+        
+        List<Product> found = new ArrayList<>();
+        for (Product product : products) {
+            if (product.getCategory().equalsIgnoreCase(category)) {
+                found.add(product);
+            }
+        }
+        if (found.isEmpty()) {
+            System.out.println("Nav produktu šajā kategorijā!");
+        } else {
+            for (Product product : found) {
+                System.out.println(product);
+            }
+        }
+    }
+
+
+
+
+
+
+
     private Product findProductById(int id) {
         for (Product product : products) {
             if (product.getId() == id) {
