@@ -119,6 +119,53 @@ public class InventoryManager {
 
 
 
+    public void sortProductsByPrice() {
+
+        List<Product> sorted = new ArrayList<>(products);
+
+        for (int i = 0; i < sorted.size() - 1; i++) {
+            for (int j = 0; j < sorted.size() - i - 1; j++) {
+                if (sorted.get(j).getPrice() > sorted.get(j + 1).getPrice()) {
+                    Product temp = sorted.get(j);
+                    sorted.set(j, sorted.get(j + 1));
+                    sorted.set(j + 1, temp);
+                }
+            }
+        }
+
+        for (Product product : sorted) {
+            System.out.println(product);
+        }
+    }
+
+    public double calculateTotalInventoryValue() {
+
+        double total = 0;
+        for (Product product : products) {
+            total += product.getPrice() * product.getQuantity();
+        }
+        return total;
+    }
+
+    public double calculateAveragePrice() {
+
+        if (products.isEmpty()) {
+            return 0;
+        }
+        double total = 0;
+        
+        for (Product product : products) {
+            total += product.getPrice();
+        }
+        return total / products.size();
+    }
+
+
+
+
+
+
+
 
 
 
