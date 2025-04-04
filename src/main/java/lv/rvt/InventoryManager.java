@@ -160,10 +160,28 @@ public class InventoryManager {
         return total / products.size();
     }
 
+    public void addCategory(String name) {
+        
+        if (!Helper.validateProductName(name)) {
+            System.out.println("Nederīgs kategorijas nosaukums!");
+            return;
+        }
+        Category category = new Category(name);
+        categories.add(category);
+        System.out.println("Kategorija pievienota: " + category);
+    }
 
 
+    public void showAllCategories() {
 
-
+        if (categories.isEmpty()) {
+            System.out.println("Nav kategoriju!");
+        } else {
+            for (Category category : categories) {
+                System.out.println(category);
+            }
+        }
+    }
 
 
 
