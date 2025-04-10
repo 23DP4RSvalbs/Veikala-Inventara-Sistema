@@ -15,6 +15,8 @@ public class UserInterface {
     }
 
     public void start() {
+        FileManager.loadCategories(manager);
+        FileManager.loadProducts(manager);
         showMainMenu();
     }
 
