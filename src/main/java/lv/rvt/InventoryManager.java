@@ -183,7 +183,13 @@ public class InventoryManager {
         }
     }
 
+    public List<Product> getProducts() {
+        return products;
+    }
 
+    public List<Category> getCategories() {
+        return categories;
+    }
 
 
 
