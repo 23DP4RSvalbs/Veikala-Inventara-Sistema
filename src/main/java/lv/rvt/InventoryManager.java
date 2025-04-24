@@ -15,7 +15,7 @@ public class InventoryManager {
         nextId = 1;
     }
 
-
+    //produkta pievienošana
     public void addProduct(String name, String category, double price, int quantity) {
 
 
@@ -30,7 +30,7 @@ public class InventoryManager {
         System.out.println("Produkts pievienots:" + product);
     }
 
-
+    //produkta rediģēšana
     public void editProduct(int id, String name, String category, double price, int quantity) {
 
         Product product = findProductById(id);
@@ -50,7 +50,7 @@ public class InventoryManager {
             System.out.println("Produkts nav atrasts!");
         }
     }
-
+//produkta dzēšana
     public void deleteProduct(int id) {
 
         Product product = findProductById(id);

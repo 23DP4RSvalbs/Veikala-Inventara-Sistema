@@ -7,9 +7,6 @@ public class UserInterface {
     private Scanner scanner;
 
     public UserInterface() {
-
-
-
         manager = new InventoryManager();
         scanner = new Scanner(System.in);
     }
@@ -20,10 +17,6 @@ public class UserInterface {
         showMainMenu();
     }
 
-
-
-
-    
     private void showMainMenu() {
         System.out.println("  _    _      _          _          _____");
         System.out.println(" | |  | |    | |        | |        /     |");
@@ -48,7 +41,8 @@ public class UserInterface {
             System.out.println("9. Aprēķināt vidējo cenu");
             System.out.println("10. Pievienot kategoriju");
             System.out.println("11. Parādīt visas kategorijas");
-            System.out.println("12. Iziet");
+            System.out.println("12. Saglabāt datus");
+            System.out.println("13. Iziet");
 
             System.out.print("Ievadiet izvēli: ");
             String choice = scanner.nextLine();
@@ -76,6 +70,8 @@ public class UserInterface {
             } else if (choice.equals("11")) {
                 manager.showAllCategories();
             } else if (choice.equals("12")) {
+                saveData();
+            } else if (choice.equals("13")) {
                 System.out.println("Iziet no programmas.");
                 break;
             } else {
@@ -84,6 +80,7 @@ public class UserInterface {
         }
     }
 
+    //produkta pievienošana
     private void addProduct() {
         System.out.print("Ievadiet produkta nosaukumu: ");
         String name = scanner.nextLine();
@@ -99,6 +96,7 @@ public class UserInterface {
         manager.addProduct(name, category, price, quantity);
     }
 
+    //produkta rediģēšana
     private void editProduct() {
         System.out.print("Ievadiet produkta ID: ");
         int id = Integer.parseInt(scanner.nextLine());
@@ -118,32 +116,38 @@ public class UserInterface {
         manager.editProduct(id, name, category, price, quantity);
     }
 
+    //produkta dzēšana
     private void deleteProduct() {
         System.out.print("Ievadiet produkta ID: ");
-
         int id = Integer.parseInt(scanner.nextLine());
         manager.deleteProduct(id);
     }
 
+    //produkta meklēšana
     private void searchProducts() {
-        System.out.print("Ievadiet meklēšanas atslēgvārdu: ");
-
+        System.out.print("Ievadiet preces nosaukumu: ");
         String keyword = scanner.nextLine();
         manager.searchProducts(keyword);
     }
 
+    //produktu filtrēšana kategorijas
     private void filterProductsByCategory() {
         System.out.print("Ievadiet kategoriju: ");
-
-
-
         String category = scanner.nextLine();
         manager.filterProductsByCategory(category);
     }
 
+    //kategorijas pievienošana
     private void addCategory() {
         System.out.print("Ievadiet kategorijas nosaukumu: ");
         String name = scanner.nextLine();
         manager.addCategory(name);
+    }
+
+    //datu failu saglabasana
+    private void saveData() {
+        FileManager.saveProducts(manager.getProducts());
+        FileManager.saveCategories(manager.getCategories());
+        System.out.println("Dati saglabāti!");
     }
 }
