@@ -35,7 +35,7 @@ public class FileManager {
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) 
                     continue;
-                String[] parts = line.split(",", -1); // Handle empty fields
+                String[] parts = line.split(",", -1);
                 if (parts.length < 5) {
                     System.out.println("Nepareiza rinda CSV failā: " + line);
                     continue;
