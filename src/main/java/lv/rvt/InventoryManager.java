@@ -1,81 +1,78 @@
 package lv.rvt;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Comparator;
+import java.util.*;
+import java.util.stream.Collectors;
 import lv.rvt.tools.Helper;
 
 public class InventoryManager {
-    private List<Product> products;
-    private List<Category> categories;
+    private final List<Product> products = new ArrayList<>();
+    private final List<Category> categories = new ArrayList<>();
+    private int nextProductId = 1;
+    private FileManager fileManager;
 
-    public InventoryManager() {
-        products = new ArrayList<>();
-        categories = new ArrayList<>();
+    public void setFileManager(FileManager fileManager) {
+        this.fileManager = fileManager;
     }
 
-    public void addProduct(String name, String category, double price, int quantity) {
-        for (Product p : products) {
-            if (p.getName().equals(name) &&
-                p.getCategory().equals(category) &&
-                p.getPrice() == price &&
-                p.getQuantity() == quantity) {
-                System.out.println("Produkts ar šādiem datiem jau eksistē!");
-                return;
-            }
+    private void saveChanges() {
+        if (fileManager != null) {
+            fileManager.saveData();
         }
-        if (!Helper.validateProductName(name) || !Helper.validateCategory(category)) {
-            System.out.println("Nederīgi produkta dati!");
-            return;
+    }
+
+    // Products
+    public Product addProduct(String name, String category, double price, int quantity) {
+        if (!Helper.validateProductData(name, category, price, quantity)) {
+            return null;
         }
-        int id = generateUniqueId();
-        Product product = new Product(id, name, category, price, quantity);
+        
+        if (!categoryExists(category)) {
+            return null;
+        }
+        
+        Product product = new Product(nextProductId++, name, category, price, quantity);
         products.add(product);
-        System.out.println("Produkts pievienots: " + product);
+        saveChanges();
+        return product;
     }
 
     public void addLoadedProduct(Product product) {
-        products.add(product);
-    }
-
-    private int generateUniqueId() {
-        Random random = new Random();
-        int id;
-        do {
-            id = random.nextInt(900) + 100; 
-        } while (findProductById(id) != null);
-        return id;
+        if (product == null) return;
+        
+        if (!products.stream().anyMatch(p -> p.getId() == product.getId())) {
+            products.add(product);
+            nextProductId = Math.max(nextProductId, product.getId() + 1);
+        }
     }
 
     public void editProduct(int id, String name, String category, double price, int quantity) {
         Product product = findProductById(id);
-        if (product != null) {
-            if (name != null && !name.isEmpty() && Helper.validateProductName(name)) {
-                product.setName(name);
-            }
-            if (category != null && !category.isEmpty() && Helper.validateCategory(category)) {
-                product.setCategory(category);
-            }
-            if (price != -1) {
-                product.setPrice(price);
-            }
-            if (quantity != -1) {
-                product.setQuantity(quantity);
-            }
-            System.out.println("Produkts atjaunināts: " + product);
-        } else {
-            System.out.println("Produkts nav atrasts!");
+        if (product == null) return;
+
+        String newName = name != null ? name : product.getName();
+        String newCategory = category != null ? category : product.getCategory();
+        double newPrice = price >= 0 ? price : product.getPrice();
+        int newQuantity = quantity >= 0 ? quantity : product.getQuantity();
+
+        if (!Helper.validateProductData(newName, newCategory, newPrice, newQuantity)) {
+            return;
         }
+
+        if (newCategory != null && !categoryExists(newCategory)) {
+            return;
+        }
+
+        Product updatedProduct = new Product(id, newName, newCategory, newPrice, newQuantity);
+        int index = products.indexOf(product);
+        products.set(index, updatedProduct);
+        saveChanges();
     }
 
     public void deleteProduct(int id) {
         Product product = findProductById(id);
         if (product != null) {
             products.remove(product);
-            System.out.println("Produkts izdzēsts: " + product);
-        } else {
-            System.out.println("Produkts nav atrasts!");
+            saveChanges();
         }
     }
 
@@ -90,165 +87,104 @@ public class InventoryManager {
     }
 
     public void searchProducts(String criterion, String keyword) {
-        List<Product> found = new ArrayList<>();
-        
-        if (criterion.equalsIgnoreCase("id")) {
-            try {
-                int searchId = Integer.parseInt(keyword);
-                
-                List<Product> closeMatches = new ArrayList<>();
-                List<Product> partialMatches = new ArrayList<>();
-                for (Product product : products) {
-                    if (product.getId() == searchId) {
-                        closeMatches.add(product);
-                    } else if (String.valueOf(product.getId()).contains(keyword)) {
-                        partialMatches.add(product);
-                    }
-                }
-    
-                closeMatches.sort(Comparator.comparingInt(p -> Math.abs(p.getId() - searchId)));
-                found.addAll(closeMatches);
-                found.addAll(partialMatches);
-            } catch (NumberFormatException e) {
-                System.out.println("Nederīgs ID formāts!");
-                return;
-            }
-        } else if (criterion.equalsIgnoreCase("name")) {
-            List<Product> prefixMatches = new ArrayList<>();
-            List<Product> substringMatches = new ArrayList<>();
-            for (Product product : products) {
-                String name = product.getName().toLowerCase();
-                if (name.startsWith(keyword.toLowerCase())) {
-                    prefixMatches.add(product);
-                } else if (name.contains(keyword.toLowerCase())) {
-                    substringMatches.add(product);
-                }
-            }
-            found.addAll(prefixMatches);
-            found.addAll(substringMatches);
-        } else if (criterion.equalsIgnoreCase("category")) {
-            for (Product product : products) {
-                if (product.getCategory().toLowerCase().contains(keyword.toLowerCase())) {
-                    found.add(product);
-                }
-            }
-        } else if (criterion.equalsIgnoreCase("price")) {
-            try {
-                double searchPrice = Double.parseDouble(keyword);
-                List<Product> closeMatches = new ArrayList<>();
-                List<Product> partialMatches = new ArrayList<>();
-                for (Product product : products) {
-                    if (product.getPrice() == searchPrice) {
-                        closeMatches.add(product);
-                    } else if (String.valueOf(product.getPrice()).contains(keyword)) {
-                        partialMatches.add(product);
-                    }
-                }
+        final String searchCriterion = criterion.toLowerCase();
+        final String searchKeyword = keyword.toLowerCase();
 
-                closeMatches.sort(Comparator.comparingDouble(p -> Math.abs(p.getPrice() - searchPrice)));
-                found.addAll(closeMatches);
-                found.addAll(partialMatches);
-            } catch (NumberFormatException e) {
-                System.out.println("Nederīgs cenas formāts!");
-                return;
-            }
-        } else if (criterion.equalsIgnoreCase("quantity")) {
-            try {
-                int searchQuantity = Integer.parseInt(keyword);
-                List<Product> closeMatches = new ArrayList<>();
-                List<Product> partialMatches = new ArrayList<>();
-                for (Product product : products) {
-                    if (product.getQuantity() == searchQuantity) {
-                        closeMatches.add(product);
-                    } else if (String.valueOf(product.getQuantity()).contains(keyword)) {
-                        partialMatches.add(product);
-                    }
-                }
-    
-                closeMatches.sort(Comparator.comparingInt(p -> Math.abs(p.getQuantity() - searchQuantity)));
-                found.addAll(closeMatches);
-                found.addAll(partialMatches);
-            } catch (NumberFormatException e) {
-                System.out.println("Nederīgs daudzuma formāts!");
-                return;
-            }
-        }
+        List<Product> found = products.stream()
+            .filter(p -> matchesSearch(p, searchCriterion, searchKeyword))
+            .collect(Collectors.toList());
 
         if (found.isEmpty()) {
             System.out.println("Nav atrasts neviens produkts!");
         } else {
-            for (Product product : found) {
-                System.out.println(product);
-            }
+            found.forEach(System.out::println);
         }
     }
 
-    public void filterProductsByCategory(String category) {
-        List<Product> found = new ArrayList<>();
-        for (Product product : products) {
-            if (product.getCategory().equalsIgnoreCase(category)) {
-                found.add(product);
-            }
+    private boolean matchesSearch(final Product p, final String criterion, final String keyword) {
+        if (criterion.equals("id")) {
+            return String.valueOf(p.getId()).contains(keyword);
+        } else if (criterion.equals("name")) {
+            return p.getName().toLowerCase().contains(keyword);
+        } else if (criterion.equals("category")) {
+            return p.getCategory().toLowerCase().contains(keyword);
+        } else if (criterion.equals("price")) {
+            return String.valueOf(p.getPrice()).contains(keyword);
+        } else if (criterion.equals("quantity")) {
+            return String.valueOf(p.getQuantity()).contains(keyword);
         }
-        if (found.isEmpty()) {
-            System.out.println("Nav produktu šajā kategorijā!");
-        } else {
-            for (Product product : found) {
-                System.out.println(product);
-            }
-        }
+        return false;
     }
 
-    public void filterAndSortByPrice(double minPrice, double maxPrice, boolean ascending) {
-        List<Product> filtered = new ArrayList<>();
-        for (Product product : products) {
-            if (product.getPrice() >= minPrice && product.getPrice() <= maxPrice) {
-                filtered.add(product);
+    public List<Product> searchProducts(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        keyword = keyword.toLowerCase().trim();
+        List<Product> results = new ArrayList<>();
+        
+        for (Product p : products) {
+            if (p.getName().toLowerCase().contains(keyword) ||
+                p.getCategory().toLowerCase().contains(keyword)) {
+                results.add(p);
             }
         }
-        if (ascending) {
-            filtered.sort(Comparator.comparingDouble(Product::getPrice));
-        } else {
-            filtered.sort(Comparator.comparingDouble(Product::getPrice).reversed());
-        }
-        if (filtered.isEmpty()) {
-            System.out.println("Nav produktu šajā cenu diapazonā!");
-        } else {
-            for (Product product : filtered) {
-                System.out.println(product);
-            }
-        }
+        
+        return results;
     }
 
-    public void filterAndSortByQuantity(int minQuantity, int maxQuantity, boolean ascending) {
-        List<Product> filtered = new ArrayList<>();
-        for (Product product : products) {
-            if (product.getQuantity() >= minQuantity && product.getQuantity() <= maxQuantity) {
-                filtered.add(product);
-            }
+    public List<Product> searchByName(String name) {
+        return products.stream()
+            .filter(p -> p.getName().toLowerCase().contains(name.toLowerCase()))
+            .collect(Collectors.toList());
+    }
+
+    public List<Product> searchByCategory(String category) {
+        return products.stream()
+            .filter(p -> p.getCategory().equals(category))
+            .collect(Collectors.toList());
+    }
+
+    public List<Product> searchByPriceRange(double min, double max) {
+        return products.stream()
+            .filter(p -> p.getPrice() >= min && p.getPrice() <= max)
+            .collect(Collectors.toList());
+    }
+
+    // Categories
+    public void addCategory(String categoryName) {
+        if (!Helper.validateCategory(categoryName)) {
+            return;
         }
-        if (ascending) {
-            filtered.sort(Comparator.comparingInt(Product::getQuantity));
-        } else {
-            filtered.sort(Comparator.comparingInt(Product::getQuantity).reversed());
-        }
-        if (filtered.isEmpty()) {
-            System.out.println("Nav produktu šajā daudzuma diapazonā!");
-        } else {
-            for (Product product : filtered) {
-                System.out.println(product);
-            }
+        
+        if (!categories.stream()
+                .map(Category::getName)
+                .anyMatch(name -> name.equalsIgnoreCase(categoryName))) {
+            categories.add(new Category(categoryName));
+            saveChanges();
+            fileManager.cleanInvalidProducts(); // Remove products with nonexistent categories
+            fileManager.saveProducts(this.getProducts(), false); // Rewrite products.csv with valid data
         }
     }
 
     public void showAllCategories() {
         if (categories.isEmpty()) {
-            System.out.println("Nav kategoriju!");
-        } else {
-            for (Category category : categories) {
-                System.out.println(category);
-            }
+            System.out.println("Nav nevienas kategorijas");
+            return;
         }
+        
+        System.out.println("\nPieejamās kategorijas:");
+        categories.forEach(cat -> System.out.println("- " + cat.getName()));
+    }
+
+    public boolean categoryExists(String categoryName) {
+        if (categoryName == null || categoryName.trim().isEmpty()) {
+            return false;
+        }
+        return categories.stream()
+            .map(Category::getName)
+            .anyMatch(name -> name.equalsIgnoreCase(categoryName.trim()));
     }
 
     public double calculateTotalInventoryValue() {
@@ -270,16 +206,64 @@ public class InventoryManager {
         return total / products.size();
     }
 
-    public void addCategory(String name) {
-        if (!Helper.validateCategory(name)) {
-            System.out.println("Nederīgs kategorijas nosaukums!");
-            return;
+    public Map<String, Double> getCategoryStatistics() {
+        Map<String, Double> stats = new HashMap<>();
+        
+        for (Category cat : categories) {
+            double totalValue = products.stream()
+                .filter(p -> p.getCategory().equals(cat.getName()))
+                .mapToDouble(p -> p.getPrice() * p.getQuantity())
+                .sum();
+            stats.put(cat.getName(), totalValue);
         }
-        Category category = new Category(name);
-        categories.add(category);
-        System.out.println("Kategorija pievienota: " + category);
+        
+        return stats;
     }
 
+    public List<Product> getLowStockProducts(int threshold) {
+        return products.stream()
+            .filter(p -> p.getQuantity() <= threshold)
+            .sorted(Comparator.comparingInt(Product::getQuantity))
+            .collect(Collectors.toList());
+    }
+
+    public double getAveragePriceByCategory(String category) {
+        return products.stream()
+            .filter(p -> p.getCategory().equals(category))
+            .mapToDouble(Product::getPrice)
+            .average()
+            .orElse(0.0);
+    }
+
+    public int getNextAvailableId() {
+        return nextProductId++;
+    }
+
+    public Product getCheapestProduct() {
+        return products.stream()
+            .min(Comparator.comparingDouble(Product::getPrice))
+            .orElse(null);
+    }
+
+    public Product getMostExpensiveProduct() {
+        return products.stream()
+            .max(Comparator.comparingDouble(Product::getPrice))
+            .orElse(null);
+    }
+
+    public Map.Entry<String, Double> getCheapestCategory() {
+        return getCategoryStatistics().entrySet().stream()
+            .min(Map.Entry.comparingByValue())
+            .orElse(null);
+    }
+
+    public Map.Entry<String, Double> getMostExpensiveCategory() {
+        return getCategoryStatistics().entrySet().stream()
+            .max(Map.Entry.comparingByValue())
+            .orElse(null);
+    }
+
+    // Getters and utility methods
     public List<Product> getProducts() {
         return products;
     }
@@ -288,12 +272,47 @@ public class InventoryManager {
         return categories;
     }
 
-    private Product findProductById(int id) {
-        for (Product product : products) {
-            if (product.getId() == id) {
-                return product;
-            }
+    public Product findProductById(int id) {
+        return products.stream()
+            .filter(p -> p.getId() == id)
+            .findFirst()
+            .orElse(null);
+    }
+
+    public List<Product> getProductsByCategory(String category) {
+        return products.stream()
+            .filter(p -> p.getCategory().equalsIgnoreCase(category))
+            .collect(Collectors.toList());
+    }
+
+    public List<Product> sortProducts(String criterion, String order) {
+        List<Product> sorted = new ArrayList<>(products);
+        Comparator<Product> comp = null;
+        if (criterion.toLowerCase().equals("name")) {
+            comp = Comparator.comparing(Product::getName);
+        } else if (criterion.toLowerCase().equals("category")) {
+            comp = Comparator.comparing(Product::getCategory);
+        } else if (criterion.toLowerCase().equals("price")) {
+            comp = Comparator.comparing(Product::getPrice);
+        } else if (criterion.toLowerCase().equals("quantity")) {
+            comp = Comparator.comparing(Product::getQuantity);
+        } else {
+            comp = Comparator.comparing(Product::getId);
         }
-        return null;
+
+        if (order.equalsIgnoreCase("desc")) {
+            comp = comp.reversed();
+        }
+        
+        sorted.sort(comp);
+        return sorted;
+    }
+
+    public Map<String, Integer> getProductCountByCategory() {
+        return products.stream()
+            .collect(Collectors.groupingBy(
+                Product::getCategory,
+                Collectors.collectingAndThen(Collectors.counting(), Long::intValue)
+            ));
     }
 }
