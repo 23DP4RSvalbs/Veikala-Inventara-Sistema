@@ -6,7 +6,7 @@ import java.util.Collection;
 import java.util.regex.Pattern;
 
 public class Helper {
-    private static final Pattern VALID_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+$");
+    private static final Pattern VALID_NAME_PATTERN = Pattern.compile("^[a-zA-Z_]+$");
     private static final Pattern VALID_NUMBER_PATTERN = Pattern.compile("^-?\\d*\\.?\\d+$");
     private static final double MAX_PRICE = 1000000.0;
     private static final int MAX_QUANTITY = 1000000;

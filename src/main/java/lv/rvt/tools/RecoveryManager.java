@@ -14,27 +14,26 @@ public class RecoveryManager {
 
     public static void createBackup() {
         try {
-            // Ensure backup directory exists
+       
             Files.createDirectories(Paths.get(BACKUP_DIR));
 
-            // Create timestamp-based backup directory
+            
             String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             String backupPath = BACKUP_DIR + "/" + timestamp;
             Files.createDirectories(Paths.get(backupPath));
 
-            // Only backup if source files exist
             Path productsSource = Paths.get(PRODUCTS_FILE);
             Path categoriesSource = Paths.get(CATEGORIES_FILE);
 
             if (Files.exists(productsSource) && Files.exists(categoriesSource)) {
-                // Create backup copies
+           
                 Path productsTarget = Paths.get(backupPath + "/products.csv");
                 Path categoriesTarget = Paths.get(backupPath + "/categories.csv");
 
                 Files.copy(productsSource, productsTarget, StandardCopyOption.REPLACE_EXISTING);
                 Files.copy(categoriesSource, categoriesTarget, StandardCopyOption.REPLACE_EXISTING);
 
-                System.out.println("Rezerves kopija izveidota: " + backupPath);
+                
             } else {
                 System.out.println("Nevar izveidot rezerves kopiju - nav atrasti avota faili");
             }
@@ -46,22 +45,21 @@ public class RecoveryManager {
     public static void restoreFromLatestBackup() {
         try {
             Path backupDir = Paths.get(BACKUP_DIR);
-            if (!Files.exists(backupDir)) {
-                System.out.println("Nav atrasta neviena rezerves kopija");
-                return;
-            }
+            if (!Files.exists(backupDir)) {            System.out.println("⚠ Nav atrasta neviena rezerves kopija");
+            return;
+        }
 
-            // Find latest backup directory
-            String latestBackup = Files.list(backupDir)
-                .filter(Files::isDirectory)
-                .map(Path::getFileName)
-                .map(Path::toString)
-                .sorted()
-                .reduce((first, second) -> second)
-                .orElse(null);
+   
+        String latestBackup = Files.list(backupDir)
+            .filter(Files::isDirectory)
+            .map(Path::getFileName)
+            .map(Path::toString)
+            .sorted()
+            .reduce((first, second) -> second)
+            .orElse(null);
 
-            if (latestBackup == null) {
-                System.out.println("Nav atrasta neviena rezerves kopija");
+        if (latestBackup == null) {
+            System.out.println("⚠ Nav atrasta neviena rezerves kopija");
                 return;
             }
 
@@ -72,12 +70,12 @@ public class RecoveryManager {
             if (Files.exists(productsSource) && Files.exists(categoriesSource)) {
                 Files.copy(productsSource, Paths.get(PRODUCTS_FILE), StandardCopyOption.REPLACE_EXISTING);
                 Files.copy(categoriesSource, Paths.get(CATEGORIES_FILE), StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("Dati atjaunoti no rezerves kopijas: " + backupPath);
+                System.out.println("✓ Dati veiksmīgi atjaunoti no rezerves kopijas: " + backupPath);
             } else {
-                System.out.println("Rezerves kopijas faili nav atrasti: " + backupPath);
+                System.out.println("⚠ Rezerves kopijas faili nav atrasti: " + backupPath);
             }
         } catch (IOException e) {
-            System.err.println("Kļūda atjaunojot no rezerves kopijas: " + e.getMessage());
+            System.err.println("⚠ Kļūda atjaunojot no rezerves kopijas: " + e.getMessage());
         }
     }
 
@@ -88,13 +86,13 @@ public class RecoveryManager {
                 return;
             }
 
-            // Get all backup directories sorted by name (which includes timestamp)
+            
             List<Path> backups = Files.list(backupDir)
                 .filter(Files::isDirectory)
                 .sorted()
                 .collect(java.util.stream.Collectors.toList());
 
-            // Keep only the most recent backups
+         
             if (backups.size() > keepCount) {
                 for (int i = 0; i < backups.size() - keepCount; i++) {
                     deleteDirectory(backups.get(i));

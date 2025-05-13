@@ -36,7 +36,7 @@ public class FileManager implements DataManagement {
             Files.createDirectories(Paths.get(BACKUP_DIR));
             createDataFilesIfMissing();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create necessary directories: " + e.getMessage());
+            throw new RuntimeException("⚠ Neizdevās izveidot nepieciešamās mapes: " + e.getMessage());
         }
     }
 
@@ -49,7 +49,7 @@ public class FileManager implements DataManagement {
                 Files.createFile(Paths.get(CATEGORIES_FILE));
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create data files: " + e.getMessage());
+            throw new RuntimeException("⚠ Neizdevās izveidot datu failus: " + e.getMessage());
         }
     }
 
@@ -59,7 +59,7 @@ public class FileManager implements DataManagement {
 
     public void checkAndClearIfFilesDeleted() {
         if (!bothDataFilesExist()) {
-            System.out.println("Detected that .csv files are missing. Clearing in-memory data to avoid stale data.");
+            System.out.println("⚠ .csv faili nav atrasti. Notīra atmiņā esošos datus, lai izvairītos no novecojušiem datiem.");
             manager.getProducts().clear();
             manager.getCategories().clear();
         }
@@ -74,7 +74,7 @@ public class FileManager implements DataManagement {
             if (manager.categoryExists(product.getCategory())) {
                 validProducts.add(product);
             } else {
-                System.out.println("Removing invalid product with nonexistent category: " + product);
+                System.out.println("⚠ Dzēš produktu ar neeksistējošu kategoriju: " + product);
                 hasInvalidData = true;
             }
         }
@@ -103,18 +103,18 @@ public class FileManager implements DataManagement {
         createDataFilesIfMissing();
         if (bothDataFilesExist()) {
             ImportResult categoryResult = loadAndValidateCategories();
-            System.out.printf("Categories loaded: %d/%d valid%n", 
+            System.out.printf("Ielādētas kategorijas: %d/%d derīgas%n", 
                 categoryResult.getValidCount(), categoryResult.getTotalCount());
             if (!categoryResult.getErrors().isEmpty()) {
-                System.out.println("Category validation errors:");
+                System.out.println("Kategoriju validācijas kļūdas:");
                 categoryResult.getErrors().forEach(System.out::println);
             }
 
             ImportResult productResult = loadAndValidateProducts();
-            System.out.printf("Products loaded: %d/%d valid%n", 
+            System.out.printf("Ielādēti produkti: %d/%d derīgi%n", 
                 productResult.getValidCount(), productResult.getTotalCount());
             if (!productResult.getErrors().isEmpty()) {
-                System.out.println("Product validation errors:");
+                System.out.println("Produktu validācijas kļūdas:");
                 productResult.getErrors().forEach(System.out::println);
             }
 
@@ -149,10 +149,10 @@ public class FileManager implements DataManagement {
     public void saveProducts(List<Product> products, boolean incrementBackup) {
         boolean fileExisted = Files.exists(Paths.get(PRODUCTS_FILE));
         if (products.isEmpty() && fileExisted && !isImporting) {
-            System.out.println("Skipping save of empty product list to preserve existing products.csv");
+            System.out.println("Izlaista tukša produktu saraksta saglabāšana, lai saglabātu esošo products.csv");
             return;
         }
-        System.out.println("Saving products.csv with " + products.size() + " products");
+        System.out.println("Saglabā products.csv ar " + products.size() + " produktiem");
         try (PrintWriter writer = new PrintWriter(new FileWriter(PRODUCTS_FILE))) {
             writer.println("ID,ProductName,Category,Price,Quantity");
             if (!products.isEmpty()) {
@@ -169,10 +169,10 @@ public class FileManager implements DataManagement {
                 BackupConfig.getInstance().incrementChanges();
             }
             if (!fileExisted) {
-                System.out.println("Since there wasn't a products.csv file, a new one was created instantly.");
+                System.out.println("✓ Tā kā products.csv fails neeksistēja, tas tika izveidots no jauna.");
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to save products: " + e.getMessage());
+            throw new RuntimeException("⚠ Neizdevās saglabāt produktus: " + e.getMessage());
         }
     }
 
@@ -186,7 +186,7 @@ public class FileManager implements DataManagement {
 
     private void saveCategories(List<Category> categories, boolean incrementBackup) {
         boolean fileExisted = Files.exists(Paths.get(CATEGORIES_FILE));
-        System.out.println("Saving categories.csv with " + categories.size() + " categories");
+        System.out.println("Saglabā categories.csv ar " + categories.size() + " kategorijām");
         try (FileWriter writer = new FileWriter(CATEGORIES_FILE)) {
             for (Category category : categories) {
                 writer.write(CsvHelper.escapeCsv(category.getName()) + "\n");
@@ -195,10 +195,10 @@ public class FileManager implements DataManagement {
                 BackupConfig.getInstance().incrementChanges();
             }
             if (!fileExisted) {
-                System.out.println("Since there wasn't a categories.csv file, a new one was created instantly.");
+                System.out.println("Tā kā categories.csv fails neeksistēja, tas tika izveidots no jauna.");
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to save categories: " + e.getMessage());
+            throw new RuntimeException("⚠ Neizdevās saglabāt kategorijas: " + e.getMessage());
         }
     }
 
@@ -208,11 +208,11 @@ public class FileManager implements DataManagement {
 
     public void exportData(String format) {
         if (!format.equalsIgnoreCase("csv")) {
-            throw new IllegalArgumentException("Tikai CSV formāts ir atbalstīts");
+            throw new IllegalArgumentException("⚠ Tikai CSV formāts ir atbalstīts");
         }
 
         if (!bothDataFilesExist()) {
-            throw new IllegalStateException("Nav atrasti products.csv un categories.csv faili");
+            throw new IllegalStateException("⚠ Nav atrasti products.csv un categories.csv faili");
         }
 
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -237,9 +237,9 @@ public class FileManager implements DataManagement {
                 }
             }
 
-            System.out.println("Dati veiksmīgi eksportēti uz: " + exportDir);
+            System.out.println("✓ Dati veiksmīgi eksportēti uz: " + exportDir);
         } catch (IOException e) {
-            throw new RuntimeException("Eksportēšana neizdevās: " + e.getMessage());
+            throw new RuntimeException("⚠ Eksportēšana neizdevās: " + e.getMessage());
         }
     }
 
@@ -453,39 +453,39 @@ public class FileManager implements DataManagement {
     @Override
     public void importData(String format) {
         if (!format.equalsIgnoreCase("csv")) {
-            throw new IllegalArgumentException("Only CSV format is supported");
+            throw new IllegalArgumentException("⚠ Tikai CSV formāts ir atbalstīts");
         }
 
         if (!bothDataFilesExist()) {
-            System.out.println("Cannot import: both products.csv and categories.csv must be present.");
+            System.out.println("⚠ Nevar importēt: nepieciešami gan products.csv, gan categories.csv faili");
             return;
         }
 
-        System.out.println("Starting import process...");
+        System.out.println("✓ Sāk importēšanas procesu...");
         isImporting = true;
         
         ImportResult categoryResult = loadAndValidateCategories();
         ImportResult productResult = loadAndValidateProducts();
         
-        System.out.printf("Categories validation: %d/%d valid%n", 
+        System.out.printf("Kategoriju validācija: %d/%d derīgas%n", 
             categoryResult.getValidCount(), categoryResult.getTotalCount());
-        System.out.printf("Products validation: %d/%d valid%n", 
+        System.out.printf("Produktu validācija: %d/%d derīgi%n", 
             productResult.getValidCount(), productResult.getTotalCount());
         
         if (!categoryResult.getErrors().isEmpty() || !productResult.getErrors().isEmpty()) {
-            System.out.println("Some entries were skipped due to validation errors:");
-            categoryResult.getErrors().forEach(System.out::println);
-            productResult.getErrors().forEach(System.out::println);
+            System.out.println("⚠ Daži ieraksti izlaisti validācijas kļūdu dēļ:");
+            categoryResult.getErrors().forEach(error -> System.out.println("⚠ " + error));
+            productResult.getErrors().forEach(error -> System.out.println("⚠ " + error));
         }
 
         isImporting = false;
-        System.out.println("Saving valid imported data...");
+        System.out.println("✓ Saglabā derīgos importētos datus...");
         RecoveryManager.createBackup();
         if (categoryResult.getValidCount() > 0) {
             saveCategories(manager.getCategories(), false);
         }
         cleanInvalidProducts();
         saveProducts(manager.getProducts(), false);
-        System.out.println("Import completed with valid data.");
+        System.out.println("✓ Imports veiksmīgi pabeigts ar derīgiem datiem.");
     }
 }

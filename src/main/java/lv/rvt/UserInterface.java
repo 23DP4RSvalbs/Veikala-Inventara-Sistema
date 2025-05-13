@@ -18,7 +18,6 @@ public class UserInterface {
 
     public void start() {
         ConsoleUI.playLoadingAnimation();
-        displayWelcome();
         while (true) {
             ConsoleUI.clearScreen();
             displayMainMenu();
@@ -55,14 +54,8 @@ public class UserInterface {
         }
     }
 
-    private void displayWelcome() {
-        String title = messages.getString("app.title");
-        ConsoleUI.clearScreen();
-        ConsoleUI.printHeader(title);
-    }
-
     private void displayMainMenu() {
-        ConsoleUI.printMenu("GALVENĀ IZVĒLNE",
+        ConsoleUI.printMenu(messages.getString("app.title"),
             "1. Filtrēt inventāru",
             "2. " + messages.getString("menu.add.product"),
             "3. " + messages.getString("categories.add"),
@@ -73,20 +66,22 @@ public class UserInterface {
             "8. Meklēt inventāru",
             "9. Aprēķināt inventāru",
             "0. " + messages.getString("menu.exit"));
-        System.out.print(ConsoleUI.YELLOW + messages.getString("prompt.choice") + ConsoleUI.RESET);
     }
 
     private void filterInventory() {
         fileManager.checkAndClearIfFilesDeleted();
+        String[] options = {
+            "1. Parādīt visus produktus",
+            "2. Parādīt visas kategorijas",
+            "3. Filtrēt produktus pēc cenas",
+            "4. Filtrēt produktus pēc kategorijas",
+            "5. Filtrēt produktus pēc daudzuma",
+            "0. Atcelt"
+        };
         while (true) {
             ConsoleUI.clearScreen();
-            ConsoleUI.printMenu("FILTRĒT INVENTĀRU",
-                "1. Parādīt visus produktus",
-                "2. Parādīt visas kategorijas",
-                "3. Filtrēt produktus pēc cenas",
-                "4. Filtrēt produktus pēc kategorijas",
-                "5. Filtrēt produktus pēc daudzuma",
-                "0. Atcelt");
+            setCurrentScreen("FILTRĒT INVENTĀRU", options);
+            ConsoleUI.printMenu(currentScreen, options);
             
             String choice = scanner.nextLine().trim();
             if (choice.equals("0")) break;
@@ -141,23 +136,37 @@ public class UserInterface {
     }
 
     private String getValidatedInput(String prompt, boolean allowEmpty) {
+        String lastInput = "";
         while (true) {
-            System.out.print(ConsoleUI.YELLOW + prompt + ConsoleUI.RESET);
+            ConsoleUI.clearScreen();
+            // If there was a previous invalid input, redisplay the current menu/screen
+            if (!lastInput.isEmpty()) {
+                displayCurrentScreen();
+            }
+            ConsoleUI.printYellow(prompt + ": ");
             String input = scanner.nextLine().trim();
             
-            if (input.equalsIgnoreCase("Atcelt")) return "Atcelt";
+            if (input.equalsIgnoreCase("0") || input.equalsIgnoreCase("Atcelt")) return "Atcelt";
             if (allowEmpty && input.isEmpty()) return "";
             
             if (Helper.validateInput(input)) {
                 return input;
-            } else {
-                ConsoleUI.printError("Ievadē atļauti tikai burti, cipari un _ simbols");
             }
+            
+            ConsoleUI.printWarning("⚠ Nosaukumā atļauti tikai burti un _ simbols");
+            scanner.nextLine(); // Wait for Enter
+            lastInput = input;
         }
     }
 
     private String getValidatedNumericInput(String prompt, boolean allowEmpty) {
+        String lastInput = "";
         while (true) {
+            ConsoleUI.clearScreen();
+            // If there was a previous invalid input, redisplay the current menu/screen
+            if (!lastInput.isEmpty()) {
+                displayCurrentScreen();
+            }
             System.out.print(ConsoleUI.YELLOW + prompt + ConsoleUI.RESET);
             String input = scanner.nextLine().trim();
             
@@ -166,409 +175,835 @@ public class UserInterface {
             
             if (Helper.validateNumericInput(input)) {
                 double value = Double.parseDouble(input);
-                if (value < 0) {
-                    ConsoleUI.printError("Vērtībai jābūt pozitīvai");
-                    continue;
+                if (value >= 0) {
+                    return input;
                 }
-                return input;
-            } else {
-                ConsoleUI.printError("Lūdzu ievadiet derīgu skaitli");
             }
+            lastInput = input;
+        }
+    }
+
+    // Track the current screen/menu being displayed
+    private String currentScreen = "";
+    private String[] currentOptions = null;
+
+    private void setCurrentScreen(String screen, String... options) {
+        this.currentScreen = screen;
+        this.currentOptions = options;
+    }
+
+    private void displayCurrentScreen() {
+        if (currentScreen != null && !currentScreen.isEmpty()) {
+            if (currentOptions != null && currentOptions.length > 0) {
+                ConsoleUI.printMenu(currentScreen, currentOptions);
+            } else {
+                ConsoleUI.printHeader(currentScreen);
+            }
+        }
+    }
+
+    private String getProductName() {
+        while (true) {
+            ConsoleUI.clearScreen();
+            displayCurrentScreen();
+            
+            String name = scanner.nextLine().trim();
+            if (name.equalsIgnoreCase("Atcelt")) return null;
+            
+            // Name validation: letters and underscores only
+            if (!name.matches("^[a-zA-Z_]+$")) {
+                continue;
+            }
+            
+            // Check for duplicate names
+            if (manager.getProducts().stream().anyMatch(p -> p.getName().equalsIgnoreCase(name))) {
+                ConsoleUI.printWarning("⚠ Produkts ar šādu nosaukumu jau eksistē");
+                scanner.nextLine();
+                continue;
+            }
+            
+            return name;
+        }
+    }
+
+    private String getProductCategory() {
+        while (true) {
+            ConsoleUI.clearScreen();
+            displayCurrentScreen();
+            displayCategories();
+            System.out.println();
+            
+            String category = scanner.nextLine().trim();
+            if (category.equalsIgnoreCase("Atcelt")) return null;
+            
+            // Category validation: letters and underscores only
+            if (!category.matches("^[a-zA-Z_]+$")) {
+                continue;
+            }
+            
+            // Silent continue if category doesn't exist
+            if (!manager.categoryExists(category)) {
+                continue;
+            }
+            
+            return category;
+        }
+    }
+
+    private Double getProductPrice() {
+        while (true) {
+            ConsoleUI.clearScreen();
+            displayCurrentScreen();
+            System.out.print(ConsoleUI.YELLOW + messages.getString("product.price.prompt") + ConsoleUI.RESET);
+            
+            String priceStr = scanner.nextLine().trim();
+            if (priceStr.equalsIgnoreCase("Atcelt")) return null;
+            
+            // Price validation: format 00000000.00
+            if (!priceStr.matches("^\\d{1,8}(\\.\\d{0,2})?$")) {
+                ConsoleUI.printWarning("⚠ Cena jābūt formātā: 00000000.00");
+                scanner.nextLine();
+                continue;
+            }
+            
+            double price = Double.parseDouble(priceStr);
+            if (price < 0 || price > 99999999.99) {
+                continue;
+            }
+            
+            return price;
+        }
+    }
+
+    private Integer getProductQuantity() {
+        while (true) {
+            ConsoleUI.clearScreen();
+            displayCurrentScreen();
+            System.out.print(ConsoleUI.YELLOW + messages.getString("product.quantity.prompt") + ConsoleUI.RESET);
+            
+            String quantityStr = scanner.nextLine().trim();
+            if (quantityStr.equalsIgnoreCase("Atcelt")) return null;
+            
+            // Quantity validation: format 00000000
+            if (!quantityStr.matches("^\\d{1,8}$")) {
+                ConsoleUI.printWarning("⚠ Daudzumam jābūt formātā: 00000000");
+                scanner.nextLine();
+                continue;
+            }
+            
+            int quantity = Integer.parseInt(quantityStr);
+            if (quantity < 0 || quantity > 99999999) {
+                continue;
+            }
+            
+            return quantity;
         }
     }
 
     private void addProduct() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printHeader(messages.getString("product.add.header"));
+        setCurrentScreen(messages.getString("product.add.header"));
         
-        String name = getValidatedInput(messages.getString("product.name.prompt"), false);
-        if (name.equalsIgnoreCase("Atcelt")) return;
+        System.out.print(ConsoleUI.YELLOW + messages.getString("product.name.prompt") + ConsoleUI.RESET);
+        final String name = getProductName();
+        if (name == null) return;
         
-        displayCategories();
-        String category;
-        while (true) {
-            category = getValidatedInput(messages.getString("product.category.prompt"), false);
-            if (category.equalsIgnoreCase("Atcelt")) return;
-            
-            if (!manager.categoryExists(category)) {
-                ConsoleUI.printError(messages.getString("product.category.invalid"));
-                continue;
-            }
-            break;
-        }
+        System.out.print(ConsoleUI.YELLOW + messages.getString("product.category.prompt") + ConsoleUI.RESET);
+        final String category = getProductCategory();
+        if (category == null) return;
         
-        String priceStr = getValidatedNumericInput(messages.getString("product.price.prompt"), false);
-        if (priceStr.equalsIgnoreCase("Atcelt")) return;
-        double price = Double.parseDouble(priceStr);
+        final Double price = getProductPrice();
+        if (price == null) return;
         
-        String quantityStr = getValidatedNumericInput(messages.getString("product.quantity.prompt"), false);
-        if (quantityStr.equalsIgnoreCase("Atcelt")) return;
-        int quantity = Integer.parseInt(quantityStr);
+        final Integer quantity = getProductQuantity();
+        if (quantity == null) return;
         
         try {
             manager.addProduct(name, category, price, quantity);
             ConsoleUI.printSuccess(messages.getString("product.add.success"));
+            System.out.println("\nNospiediet Enter, lai turpinātu...");
+            scanner.nextLine();
         } catch (IllegalArgumentException e) {
-            ConsoleUI.printError(e.getMessage());
+            // Silently return to main menu on error
+            return;
         }
     }
 
     private void addCategory() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printHeader(messages.getString("categories.header"));
+        String[] options = {messages.getString("menu.back")};
         
-        String name = getValidatedInput(messages.getString("categories.name.prompt"), false);
-        if (name.equalsIgnoreCase("Atcelt")) return;
-        
-        if (manager.categoryExists(name)) {
-            ConsoleUI.printError(messages.getString("categories.exists"));
-            return;
-        }
-        
-        try {
-            manager.addCategory(name);
-            ConsoleUI.printSuccess(messages.getString("categories.add.success"));
-        } catch (IllegalArgumentException e) {
-            ConsoleUI.printError(e.getMessage());
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("categories.header"), options);
+            displayCategories();
+            System.out.println();
+            
+            String name = getValidatedInput(messages.getString("categories.name.prompt"), true);
+            
+            // Handle cancel/empty input silently
+            if (name.isEmpty() || name.equalsIgnoreCase("Atcelt")) {
+                return;
+            }
+            
+            // Validate category name format silently (letters and underscores only)
+            if (!name.matches("^[a-zA-Z_]+$")) {
+                continue;
+            }
+            
+            // Check for duplicate categories
+            if (manager.categoryExists(name)) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("categories.exists"));
+                continue;
+            }
+            
+            try {
+                manager.addCategory(name);
+                ConsoleUI.printSuccess(messages.getString("categories.add.success"));
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+                return;
+            } catch (IllegalArgumentException e) {
+                ConsoleUI.printError(e.getMessage());
+                continue;
+            }
         }
     }
 
     private void editProduct() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printHeader(messages.getString("menu.edit.product"));
+        String[] options = {messages.getString("menu.back")};
+        Product product = null;
         
-        displayFilteredProducts(manager.getProducts(), "id", "asc");
-        System.out.println();
-        
-        String idStr = getValidatedNumericInput(messages.getString("product.id.prompt"), false);
-        if (idStr.equalsIgnoreCase("Atcelt")) return;
-        
-        int id = Integer.parseInt(idStr);
-        Product product = manager.findProductById(id);
-        if (product == null) {
-            ConsoleUI.printError(messages.getString("product.not.found"));
-            return;
+        // Product ID input loop
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("menu.edit.product"), options);
+            displayFilteredProducts(manager.getProducts(), "id", "asc");
+            System.out.println();
+            
+            String idStr = getValidatedInput(messages.getString("product.id.prompt"), true);
+            
+            // Handle cancel/empty input silently
+            if (idStr.isEmpty() || idStr.equalsIgnoreCase("Atcelt")) {
+                return;
+            }
+            
+            // Validate numeric input silently
+            if (!idStr.matches("^\\d+$")) {
+                continue;
+            }
+            
+            // Validate product exists
+            try {
+                int id = Integer.parseInt(idStr);
+                product = manager.findProductById(id);
+                if (product == null) {
+                    ConsoleUI.printWarning("⚠ " + messages.getString("product.not.found"));
+                    continue;
+                }
+                break; // Valid product found, proceed to editing
+            } catch (NumberFormatException e) {
+                continue;
+            }
         }
         
-        System.out.println("\n" + messages.getString("product.current") + product);
-        System.out.println(messages.getString("product.edit.instructions"));
-        
-        String name = getValidatedInput(messages.getString("product.name.prompt"), true);
-        if (name.equalsIgnoreCase("Atcelt")) return;
-        
-        displayCategories();
-        String category = getValidatedInput(messages.getString("product.category.prompt"), true);
-        if (category.equalsIgnoreCase("Atcelt")) return;
-        if (!category.isEmpty() && !manager.categoryExists(category)) {
-            ConsoleUI.printError(messages.getString("product.category.invalid"));
-            return;
-        }
-        
-        String priceStr = getValidatedNumericInput(messages.getString("product.price.prompt"), true);
-        if (priceStr.equalsIgnoreCase("Atcelt")) return;
-        double price = priceStr.isEmpty() ? -1 : Double.parseDouble(priceStr);
-        
-        String quantityStr = getValidatedNumericInput(messages.getString("product.quantity.prompt"), true);
-        if (quantityStr.equalsIgnoreCase("Atcelt")) return;
-        int quantity = quantityStr.isEmpty() ? -1 : Integer.parseInt(quantityStr);
-        
-        try {
-            manager.editProduct(id, name.isEmpty() ? null : name, 
-                           category.isEmpty() ? null : category, 
-                           price, quantity);
-            ConsoleUI.printSuccess(messages.getString("product.edit.success"));
-        } catch (IllegalArgumentException e) {
-            ConsoleUI.printError(e.getMessage());
+        // Edit product details
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("menu.edit.product"), options);
+            System.out.println(ConsoleUI.YELLOW + messages.getString("product.edit.instructions") + ConsoleUI.RESET);
+            
+            // Name input with validation
+            String name = getValidatedInput(messages.getString("product.name.prompt"), true);
+            if (name.equalsIgnoreCase("Atcelt")) return;
+            if (!name.isEmpty() && !name.matches("^[a-zA-Z_]+$")) {
+                continue;
+            }
+            
+            // Category input with validation
+            displayCategories();
+            String category = getValidatedInput(messages.getString("product.category.prompt"), true);
+            if (category.equalsIgnoreCase("Atcelt")) return;
+            if (!category.isEmpty()) {
+                if (!category.matches("^[a-zA-Z_]+$")) continue;
+                if (!manager.categoryExists(category)) {
+                    ConsoleUI.printWarning("⚠ " + messages.getString("product.category.invalid"));
+                    continue;
+                }
+            }
+            
+            // Price input with validation
+            String priceStr = getValidatedInput(messages.getString("product.price.prompt"), true);
+            if (priceStr.equalsIgnoreCase("Atcelt")) return;
+            double price = -1;
+            if (!priceStr.isEmpty()) {
+                if (!priceStr.matches("^\\d{1,8}(\\.\\d{0,2})?$")) continue;
+                try {
+                    price = Double.parseDouble(priceStr);
+                    if (price < 0 || price > 99999999.99) continue;
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+            }
+            
+            // Quantity input with validation
+            String quantityStr = getValidatedInput(messages.getString("product.quantity.prompt"), true);
+            if (quantityStr.equalsIgnoreCase("Atcelt")) return;
+            int quantity = -1;
+            if (!quantityStr.isEmpty()) {
+                if (!quantityStr.matches("^\\d{1,8}$")) continue;
+                try {
+                    quantity = Integer.parseInt(quantityStr);
+                    if (quantity < 0 || quantity > 99999999) continue;
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+            }
+            
+            // Update product
+            try {
+                manager.editProduct(product.getId(), 
+                                  name.isEmpty() ? null : name,
+                                  category.isEmpty() ? null : category,
+                                  price,
+                                  quantity);
+                ConsoleUI.printSuccess(messages.getString("product.edit.success"));
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+                return;
+            } catch (IllegalArgumentException e) {
+                ConsoleUI.printError(e.getMessage());
+                continue;
+            }
         }
     }
 
     private void deleteProduct() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printHeader(messages.getString("menu.delete.product"));
+        String[] options = {messages.getString("menu.back")};
+        Product product = null;
         
-        displayFilteredProducts(manager.getProducts(), "id", "asc");
-        System.out.println();
-        
-        String idStr = getValidatedNumericInput(messages.getString("product.delete.prompt"), false);
-        if (idStr.equalsIgnoreCase("Atcelt")) return;
-        
-        try {
-            int id = Integer.parseInt(idStr);
-            Product product = manager.findProductById(id);
-            if (product == null) {
-                ConsoleUI.printError(messages.getString("product.not.found"));
+        // Product ID input loop
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("menu.delete.product"), options);
+            displayFilteredProducts(manager.getProducts(), "id", "asc");
+            System.out.println();
+            
+            String idStr = getValidatedInput(messages.getString("product.delete.prompt"), true);
+            
+            // Handle cancel/empty input silently
+            if (idStr.isEmpty() || idStr.equalsIgnoreCase("Atcelt")) {
                 return;
             }
             
-            manager.deleteProduct(id);
-            ConsoleUI.printSuccess(messages.getString("product.delete.success"));
-        } catch (IllegalArgumentException e) {
-            ConsoleUI.printError(e.getMessage());
+            // Validate numeric input silently
+            if (!idStr.matches("^\\d+$")) {
+                continue;
+            }
+            
+            // Validate product exists
+            try {
+                int id = Integer.parseInt(idStr);
+                product = manager.findProductById(id);
+                if (product == null) {
+                    ConsoleUI.printWarning("⚠ " + messages.getString("product.not.found"));
+                    continue;
+                }
+                break; // Valid product found, proceed to confirmation
+            } catch (NumberFormatException e) {
+                continue;
+            }
+        }
+        
+        // Confirmation loop
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("menu.delete.product"), options);
+            displayFilteredProducts(manager.getProducts(), "id", "asc");
+            System.out.println();
+            
+            System.out.print(ConsoleUI.YELLOW + 
+                           messages.getString("product.delete.confirm") + 
+                           " (j/n): " + ConsoleUI.RESET);
+            
+            String confirm = scanner.nextLine().trim().toLowerCase();
+            
+            // Handle input
+            if (confirm.isEmpty()) {
+                continue;
+            }
+            
+            if (confirm.equals("n")) {
+                return;
+            }
+            
+            if (confirm.equals("j")) {
+                try {
+                    manager.deleteProduct(product.getId());
+                    ConsoleUI.printSuccess("✓ " + messages.getString("product.delete.success"));
+                    System.out.println("\nNospiediet Enter, lai turpinātu...");
+                    scanner.nextLine();
+                    return;
+                } catch (IllegalArgumentException e) {
+                    ConsoleUI.printError(e.getMessage());
+                    continue;
+                }
+            }
+            
+            // Invalid input, loop silently
+            continue;
         }
     }
 
     private void dataExportImport() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printMenu(messages.getString("data.header"),
+        String[] options = {
             "1. " + messages.getString("data.export"),
             "2. " + messages.getString("data.import"),
-            "0. " + messages.getString("menu.back"));
+            "0. " + messages.getString("menu.back")
+        };
         
-        String choice = scanner.nextLine().trim();
-        if (choice.equals("0")) return;
-        
-        try {
-            if (choice.equals("1")) {
-                fileManager.exportData("csv");
-                ConsoleUI.printSuccess(messages.getString("export.success"));
-            } else if (choice.equals("2")) {
-                fileManager.importData("csv");
-                ConsoleUI.printSuccess(messages.getString("import.success"));
-            } else {
-                ConsoleUI.printError(messages.getString("error.invalid.choice"));
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("data.header").toUpperCase(), options);
+            System.out.println();
+            
+            System.out.print(ConsoleUI.YELLOW + messages.getString("menu.choice.prompt") + ConsoleUI.RESET);
+            String choice = scanner.nextLine().trim();
+            
+            // Handle empty input or invalid numbers silently
+            if (choice.isEmpty() || !choice.matches("[0-2]")) {
+                continue;
             }
-        } catch (Exception e) {
-            ConsoleUI.printError(e.getMessage());
+            
+            // Handle menu exit
+            if (choice.equals("0")) {
+                return;
+            }
+            
+            try {
+                // Handle export
+                if (choice.equals("1")) {
+                    fileManager.exportData("csv");
+                    ConsoleUI.printSuccess("✓ " + messages.getString("export.success"));
+                    System.out.println("\nNospiediet Enter, lai turpinātu...");
+                    scanner.nextLine();
+                    return;
+                }
+                
+                // Handle import
+                if (choice.equals("2")) {
+                    fileManager.importData("csv");
+                    ConsoleUI.printSuccess("✓ " + messages.getString("import.success"));
+                    System.out.println("\nNospiediet Enter, lai turpinātu...");
+                    scanner.nextLine();
+                    return;
+                }
+            } catch (Exception e) {
+                ConsoleUI.printError("⚠ " + e.getMessage());
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+                continue;
+            }
         }
     }
 
     private void searchInventory() {
+        String[] options = {
+            "1. " + messages.getString("search.by.name"),
+            "2. " + messages.getString("search.by.category"),
+            "3. " + messages.getString("search.by.price.range"),
+            "0. " + messages.getString("menu.back")
+        };
+
         while (true) {
             ConsoleUI.clearScreen();
-            ConsoleUI.printMenu(messages.getString("search.header"),
-                "1. " + messages.getString("search.by.name"),
-                "2. " + messages.getString("search.by.category"),
-                "3. " + messages.getString("search.by.price.range"),
-                "0. " + messages.getString("menu.back"));
+            setCurrentScreen(messages.getString("search.header"), options);
+            ConsoleUI.printMenu(currentScreen, options);
             
             String choice = scanner.nextLine().trim();
-            if (choice.equals("0")) return;
             
-            try {
-                switch (choice) {
-                    case "1" -> searchByName();
-                    case "2" -> searchByCategory();
-                    case "3" -> searchByPriceRange();
-                    default -> ConsoleUI.printError(messages.getString("error.invalid.choice"));
+            // Silent return for "0" choice
+            if (choice.equals("0")) {
+                return;
+            }
+            
+            // Handle valid choices silently
+            switch (choice) {
+                case "1" -> searchByName();
+                case "2" -> searchByCategory();
+                case "3" -> searchByPriceRange();
+                default -> {
+                    // Invalid input - silently loop back
+                    continue;
                 }
-            } catch (Exception e) {
-                ConsoleUI.printError(e.getMessage());
             }
         }
     }
 
     private void searchByName() {
-        String name = getValidatedInput(messages.getString("search.name.prompt"), false);
-        if (name.equalsIgnoreCase("Atcelt")) return;
-        
-        List<Product> results = manager.searchByName(name);
-        if (results.isEmpty()) {
-            ConsoleUI.printWarning(messages.getString("search.no.results"));
-        } else {
-            ConsoleUI.printHeader(messages.getString("search.results"));
+        while (true) {
+            ConsoleUI.clearScreen();
+            ConsoleUI.printYellow(messages.getString("search.name.prompt") + ": ");
+            String name = scanner.nextLine().trim();
+            
+            if (name.isEmpty() || name.equalsIgnoreCase("0")) {
+                return;
+            }
+            
+            List<Product> results = manager.searchByName(name);
+            if (results.isEmpty()) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("search.no.results"));
+                scanner.nextLine(); // Wait for Enter
+                continue;
+            }
+            
             displayFilteredProducts(results, "name", "asc");
+            scanner.nextLine(); // Wait for Enter before returning
+            return;
         }
     }
 
     private void searchByCategory() {
-        displayCategories();
-        String category = getValidatedInput(messages.getString("search.category.prompt"), false);
-        if (category.equalsIgnoreCase("Atcelt")) return;
-        
-        if (!manager.categoryExists(category)) {
-            ConsoleUI.printError(messages.getString("product.category.invalid"));
-            return;
-        }
-        
-        List<Product> results = manager.searchByCategory(category);
-        if (results.isEmpty()) {
-            ConsoleUI.printWarning(messages.getString("search.no.results"));
-        } else {
-            ConsoleUI.printHeader(messages.getString("search.results"));
+        while (true) {
+            ConsoleUI.clearScreen();
+            displayCategories();
+            ConsoleUI.printYellow(messages.getString("search.category.prompt") + ": ");
+            String category = scanner.nextLine().trim();
+            
+            if (category.isEmpty() || category.equalsIgnoreCase("0")) {
+                return;
+            }
+            
+            if (!manager.categoryExists(category)) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("product.category.invalid"));
+                scanner.nextLine(); // Wait for Enter
+                continue;
+            }
+            
+            List<Product> results = manager.searchByCategory(category);
+            if (results.isEmpty()) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("search.no.results"));
+                scanner.nextLine(); // Wait for Enter
+                continue;
+            }
+            
             displayFilteredProducts(results, "name", "asc");
+            scanner.nextLine(); // Wait for Enter before returning
+            return;
         }
     }
 
     private void searchByPriceRange() {
-        String minStr = getValidatedNumericInput(messages.getString("search.price.min"), false);
-        if (minStr.equalsIgnoreCase("Atcelt")) return;
-        double min = Double.parseDouble(minStr);
-        
-        String maxStr = getValidatedNumericInput(messages.getString("search.price.max"), false);
-        if (maxStr.equalsIgnoreCase("Atcelt")) return;
-        double max = Double.parseDouble(maxStr);
-        
-        List<Product> results = manager.searchByPriceRange(min, max);
-        if (results.isEmpty()) {
-            ConsoleUI.printWarning(messages.getString("search.no.results"));
-        } else {
-            ConsoleUI.printHeader(messages.getString("search.results"));
+        while (true) {
+            ConsoleUI.clearScreen();
+            ConsoleUI.printYellow(messages.getString("search.price.min") + ": ");
+            String minStr = scanner.nextLine().trim();
+            
+            if (minStr.isEmpty() || minStr.equalsIgnoreCase("0")) {
+                return;
+            }
+            
+            // Validate min price format
+            if (!minStr.matches("\\d{1,8}(\\.\\d{0,2})?")) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("error.price.format"));
+                scanner.nextLine();
+                continue;
+            }
+            
+            double min;
+            try {
+                min = Double.parseDouble(minStr);
+            } catch (NumberFormatException e) {
+                continue; // Silently retry
+            }
+
+            ConsoleUI.printYellow(messages.getString("search.price.max") + ": ");
+            String maxStr = scanner.nextLine().trim();
+            
+            if (maxStr.isEmpty() || maxStr.equalsIgnoreCase("0")) {
+                return;
+            }
+            
+            // Validate max price format
+            if (!maxStr.matches("\\d{1,8}(\\.\\d{0,2})?")) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("error.price.format"));
+                scanner.nextLine();
+                continue;
+            }
+            
+            double max;
+            try {
+                max = Double.parseDouble(maxStr);
+            } catch (NumberFormatException e) {
+                continue; // Silently retry
+            }
+            
+            if (max < min) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("error.price.range"));
+                scanner.nextLine();
+                continue;
+            }
+            
+            List<Product> results = manager.searchByPriceRange(min, max);
+            if (results.isEmpty()) {
+                ConsoleUI.printWarning("⚠ " + messages.getString("search.no.results"));
+                scanner.nextLine(); // Wait for Enter
+                continue;
+            }
+            
             displayFilteredProducts(results, "price", "asc");
+            scanner.nextLine(); // Wait for Enter before returning
+            return;
         }
     }
 
     private void filterByPrice() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printMenu(messages.getString("products.sort.header"),
+        String[] options = {
             "1. " + messages.getString("products.sort.price.asc"),
             "2. " + messages.getString("products.sort.price.desc"),
-            "0. " + messages.getString("menu.back"));
-        
-        String choice = scanner.nextLine().trim();
-        if (choice.equals("0")) return;
-        
-        if (choice.equals("1")) {
-            displayFilteredProducts(manager.getProducts(), "price", "asc");
-        } else if (choice.equals("2")) {
-            displayFilteredProducts(manager.getProducts(), "price", "desc");
-        } else {
-            ConsoleUI.printError(messages.getString("error.invalid.choice"));
+            "0. " + messages.getString("menu.back")
+        };
+
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("products.sort.header"), options);
+            ConsoleUI.printMenu(currentScreen, options);
+            
+            String choice = scanner.nextLine().trim();
+            
+            // Silent return for cancel option
+            if (choice.equals("0")) {
+                return;
+            }
+            
+            // Handle valid choices
+            if (choice.equals("1") || choice.equals("2")) {
+                ConsoleUI.clearScreen();
+                displayFilteredProducts(
+                    manager.getProducts(), 
+                    "price", 
+                    choice.equals("1") ? "asc" : "desc"
+                );
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+                return;
+            }
+            
+            // Invalid input - loop silently
         }
     }
 
     private void filterByCategory() {
-        ConsoleUI.clearScreen();
-        displayCategories();
-        System.out.println();
-        
-        String category = getValidatedInput(messages.getString("search.category.prompt"), false);
-        if (category.equalsIgnoreCase("Atcelt")) return;
-        
-        if (!manager.categoryExists(category)) {
-            ConsoleUI.printError(messages.getString("product.category.invalid"));
+        String[] options = {messages.getString("menu.back")};
+
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("products.filter.category"), options);
+            displayCategories();
+            System.out.println();
+            
+            String category = getValidatedInput(messages.getString("search.category.prompt"), true);
+            
+            // Silent return for empty input or cancel option
+            if (category.isEmpty() || category.equalsIgnoreCase("Atcelt")) {
+                return;
+            }
+            
+            // Silently handle invalid category names (only letters, spaces, underscores)
+            if (!category.matches("^[\\p{L}\\s_]+$")) {
+                continue;
+            }
+            
+            // Silent continue if category doesn't exist
+            if (!manager.categoryExists(category)) {
+                continue;
+            }
+            
+            List<Product> results = manager.searchByCategory(category);
+            if (!results.isEmpty()) {
+                ConsoleUI.clearScreen();
+                displayFilteredProducts(results, "name", "asc");
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+            }
             return;
-        }
-        
-        List<Product> results = manager.searchByCategory(category);
-        if (results.isEmpty()) {
-            ConsoleUI.printWarning(messages.getString("search.no.results"));
-        } else {
-            displayFilteredProducts(results, "name", "asc");
         }
     }
 
     private void filterByQuantity() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printMenu(messages.getString("products.sort.header"),
+        String[] options = {
             "1. " + messages.getString("products.sort.quantity") + " ↑",
             "2. " + messages.getString("products.sort.quantity") + " ↓",
-            "0. " + messages.getString("menu.back"));
-        
-        String choice = scanner.nextLine().trim();
-        if (choice.equals("0")) return;
-        
-        if (choice.equals("1")) {
-            displayFilteredProducts(manager.getProducts(), "quantity", "asc");
-        } else if (choice.equals("2")) {
-            displayFilteredProducts(manager.getProducts(), "quantity", "desc");
-        } else {
-            ConsoleUI.printError(messages.getString("error.invalid.choice"));
+            "0. " + messages.getString("menu.back")
+        };
+
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen(messages.getString("products.sort.header"), options);
+            ConsoleUI.printMenu(currentScreen, options);
+            
+            String choice = scanner.nextLine().trim();
+            
+            // Silent return for cancel option
+            if (choice.equals("0")) {
+                return;
+            }
+            
+            // Handle valid choices
+            if (choice.equals("1") || choice.equals("2")) {
+                ConsoleUI.clearScreen();
+                displayFilteredProducts(
+                    manager.getProducts(), 
+                    "quantity", 
+                    choice.equals("1") ? "asc" : "desc"
+                );
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+                return;
+            }
+            
+            // Invalid or empty input - loop silently
+            if (choice.isEmpty() || (!choice.equals("1") && !choice.equals("2"))) {
+                continue;
+            }
         }
     }
 
     private void configureBackupChanges() {
-        ConsoleUI.clearScreen();
-        ConsoleUI.printMenu(messages.getString("settings.backup.header"),
-            "1. " + messages.getString("settings.backup.every"),
-            "2. " + messages.getString("settings.backup.5"),
-            "3. " + messages.getString("settings.backup.10"),
-            "4. " + messages.getString("settings.backup.20"),
-            "0. " + messages.getString("menu.back"));
-        
-        String choice = scanner.nextLine().trim();
-        if (choice.equals("0")) return;
-        
-        int changes = switch (choice) {
-            case "1" -> 1;
-            case "2" -> 5;
-            case "3" -> 10;
-            case "4" -> 20;
-            default -> -1;
+        String[] options = {
+            "1. Katru reizi",
+            "2. Ik pēc 5 izmaiņām",
+            "3. Ik pēc 10 izmaiņām",
+            "4. Ik pēc 20 izmaiņām",
+            "0. Atcelt"
         };
         
-        if (changes > 0) {
-            BackupConfig config = BackupConfig.getInstance();
-            config.setChangesBeforeBackup(changes);
-            config.resetChanges();
-            ConsoleUI.printSuccess(String.format(messages.getString("backup.changes.set"), changes));
-        } else {
-            ConsoleUI.printError(messages.getString("error.invalid.choice"));
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen("REZERVES KOPIJU IESTATĪJUMI", options);
+            System.out.println();
+            
+            System.out.print(ConsoleUI.YELLOW + messages.getString("menu.choice.prompt") + ConsoleUI.RESET);
+            String choice = scanner.nextLine().trim();
+            
+            // Handle empty input or invalid numbers silently
+            if (choice.isEmpty() || !choice.matches("[0-4]")) {
+                continue;
+            }
+            
+            // Handle menu exit
+            if (choice.equals("0")) {
+                return;
+            }
+            
+            int changes = switch (choice) {
+                case "1" -> 1;
+                case "2" -> 5;
+                case "3" -> 10;
+                case "4" -> 20;
+                default -> -1;
+            };
+            
+            if (changes > 0) {
+                // Update BackupConfig
+                BackupConfig config = BackupConfig.getInstance();
+                config.setChangesBeforeBackup(changes);
+                config.resetChanges();
+                
+                // Save to application.properties
+                ConfigManager.getInstance().setProperty("backup.interval", String.valueOf(changes));
+                
+                // Show success message
+                String message = switch (changes) {
+                    case 1 -> "✓ Rezerves kopijas tiks veidotas pēc katras izmaiņas";
+                    default -> String.format("✓ Rezerves kopijas tiks veidotas pēc %d izmaiņām", changes);
+                };
+                ConsoleUI.printSuccess(message);
+                
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+                return;
+            }
         }
     }
 
     private void showSettings() {
+        String[] options = {
+            "1. Izveidot rezerves kopiju",
+            "2. Nomainīt rezerves kopiju veidošanu",
+            "3. Lietošanas Nosacījumi",
+            "0. Atcelt"
+        };
+        
         while (true) {
             ConsoleUI.clearScreen();
-            ConsoleUI.printMenu("IESTATĪJUMI",
-                "1. Mainīt valodu",
-                "2. Izveidot rezerves kopiju",
-                "3. Nomainīt rezerves kopiju veidošanu",
-                "4. Lietošanas Nosacījumi",
-                "0. Atcelt");
+            setCurrentScreen("IESTATĪJUMI", options);
+            System.out.println();
             
+            System.out.print(ConsoleUI.YELLOW + messages.getString("menu.choice.prompt") + ConsoleUI.RESET);
             String choice = scanner.nextLine().trim();
-            if (choice.equals("0")) return;
+            
+            // Handle empty input or invalid numbers silently
+            if (choice.isEmpty() || !choice.matches("[0-3]")) {
+                continue;
+            }
+            
+            // Handle menu exit
+            if (choice.equals("0")) {
+                return;
+            }
             
             try {
                 switch (choice) {
-                    case "1":
-                        if (messages.getCurrentLanguage().equals("lv")) {
-                            messages.setLanguage("en");
-                            ConsoleUI.printSuccess("Language changed to English");
-                        } else {
-                            messages.setLanguage("lv");
-                            ConsoleUI.printSuccess("Valoda nomainīta uz latviešu");
-                        }
-                        break;
-                    case "2":
+                    case "1" -> {
                         RecoveryManager.createBackup();
                         BackupConfig.getInstance().resetChanges();
-                        ConsoleUI.printSuccess("Rezerves kopija veiksmīgi izveidota");
-                        break;
-                    case "3":
+                        ConsoleUI.printSuccess("✓ Rezerves kopija veiksmīgi izveidota");
+                        System.out.println("\nNospiediet Enter, lai turpinātu...");
+                        scanner.nextLine();
+                    }
+                    case "2" -> {
                         configureBackupChanges();
-                        break;
-                    case "4":
+                    }
+                    case "3" -> {
                         showUsageInstructions();
-                        break;
-                    default:
-                        ConsoleUI.printError("Nederīga izvēle");
-                }
-                if (!choice.equals("3") && !choice.equals("4")) {
-                    System.out.println("\nNospiediet Enter, lai turpinātu...");
-                    scanner.nextLine();
+                        System.out.println("\nNospiediet Enter, lai turpinātu...");
+                        scanner.nextLine();
+                    }
                 }
             } catch (Exception e) {
-                ConsoleUI.printError(e.getMessage());
+                ConsoleUI.printError("⚠ " + e.getMessage());
+                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                scanner.nextLine();
+                continue;
             }
         }
     }
 
     private void showUsageInstructions() {
+        String[] options = {messages.getString("menu.back")};
+        
         ConsoleUI.clearScreen();
-        ConsoleUI.printHeader("Lietošanas Nosacījumi un Ierobežojumi");
-        System.out.println(ConsoleUI.CYAN + "\n1. Produktu un Kategoriju Nosaukumi:" + ConsoleUI.RESET);
-        System.out.println("   - Atļauti: burti (a-z, A-Z)");
-        System.out.println("   - Atļauti: cipari (0-9)");
-        System.out.println("   - Atļauts: pasvītrojuma simbols (_)");
-        System.out.println("   - NAV atļauti: atstarpes un citi speciālie simboli");
+        setCurrentScreen("LIETOŠANAS NOSACĪJUMI", options);
         
-        System.out.println(ConsoleUI.CYAN + "\n2. Skaitliskās Vērtības:" + ConsoleUI.RESET);
-        System.out.println("   - Cenām jābūt pozitīvām");
-        System.out.println("   - Daudzumam jābūt veselam, pozitīvam skaitlim");
+        // Use yellow for section headers instead of cyan for consistency
+        System.out.println(ConsoleUI.YELLOW + "\nProduktu un Kategoriju Nosaukumi:" + ConsoleUI.RESET);
+        System.out.println("   - Atļauti tikai burti (a-z, A-Z)");
+        System.out.println("   - Atļauts pasvītrojuma simbols (_)");
+        System.out.println("   - NAV atļauti: cipari, atstarpes un citi simboli");
         
-        System.out.println(ConsoleUI.CYAN + "\n3. Ierobežojumi:" + ConsoleUI.RESET);
-        System.out.println("   - Maksimālā cena: 1,000,000");
-        System.out.println("   - Maksimālais daudzums: 1,000,000");
-        System.out.println("   - Kategorijas/Produkta nosaukums: 1-50 simboli");
+        System.out.println(ConsoleUI.YELLOW + "\nSkaitliskās Vērtības:" + ConsoleUI.RESET);
+        System.out.println("   - Cenai jābūt pozitīvai (max: 99999999.99)");
+        System.out.println("   - Daudzumam jābūt pozitīvam (max: 99999999)");
         
-        System.out.println(ConsoleUI.CYAN + "\n4. Rezerves Kopijas:" + ConsoleUI.RESET);
-        System.out.println("   - Tiek veidotas automātiski pēc noteikta izmaiņu skaita");
-        System.out.println("   - Var izveidot manuāli caur iestatījumiem");
-        System.out.println("   - Glabājas data/backup/ mapē");
+        System.out.println(ConsoleUI.YELLOW + "\nValidācijas Nosacījumi:" + ConsoleUI.RESET);
+        System.out.println("   - Nosaukumi: tikai burti un _ simbols");
+        System.out.println("   - Kategorijas: tikai burti un _ simbols");
+        System.out.println("   - Cena: līdz 8 cipariem, 2 decimālie");
+        System.out.println("   - Daudzums: līdz 8 cipariem");
         
-        System.out.println("\nNospiediet Enter, lai turpinātu...");
-        scanner.nextLine();
+        System.out.println(ConsoleUI.YELLOW + "\nRezerves Kopijas:" + ConsoleUI.RESET);
+        System.out.println("   - Automātiska veidošana pēc noteikta skaita izmaiņu");
+        System.out.println("   - Tiek saglabātas data/backup/ mapē");
+        System.out.println("   - Var veidot manuāli caur iestatījumiem");
     }
 
     private void calculateInventory() {
