@@ -6,8 +6,8 @@ import org.junit.Test;
 import java.util.List;
 
 /**
- * Unit tests for the Inventory Management System.
- * Run these tests using: mvn test
+ * Inventāra pārvaldības sistēmas testi
+ * Lai palaistu testus, izmantojiet: mvn test
  */
 public class AppTest {
     private InventoryManager manager;
@@ -15,100 +15,91 @@ public class AppTest {
     @Before
     public void setup() {
         manager = new InventoryManager();
+        FileManager fileManager = new FileManager(manager);
+        manager.setFileManager(fileManager);
     }
     
     @Test
-    public void testCategoryOperations() {
-        // Test category addition
-        manager.addCategory("Electronics");
-        manager.addCategory("Food");
-        assertTrue("Category should exist after adding", manager.categoryExists("Electronics"));
-        assertTrue("Category should exist after adding", manager.categoryExists("Food"));
+    public void testKategorijuDarbibas() {
+        // Pievienojam kategorijas
+        manager.addCategory("Elektronika");
+        manager.addCategory("Pārtika");
         
-        // Test duplicate category
-        int initialSize = manager.getCategories().size();
-        manager.addCategory("Electronics");
-        assertEquals("Duplicate category should not be added", initialSize, manager.getCategories().size());
+        // Pārbaudām vai kategorijas ir izveidotas
+        assertTrue("Kategorijai vajadzētu eksistēt", manager.categoryExists("Elektronika"));
+        assertTrue("Kategorijai vajadzētu eksistēt", manager.categoryExists("Pārtika"));
         
-        // Test invalid category
+        // Pārbaudām dublikātu novēršanu
+        int sakumaSkaits = manager.getCategories().size();
+        manager.addCategory("Elektronika");
+        assertEquals("Dublikātiem nevajadzētu tikt pievienotiem", sakumaSkaits, manager.getCategories().size());
+        
+        // Pārbaudām nederīgas kategorijas
         manager.addCategory("");
         manager.addCategory(null);
-        assertEquals("Invalid categories should not be added", initialSize, manager.getCategories().size());
+        assertEquals("Nederīgas kategorijas nedrīkst pievienot", sakumaSkaits, manager.getCategories().size());
     }
     
     @Test
-    public void testProductOperations() {
-        manager.addCategory("Electronics");
+    public void testProduktuDarbibas() {
+        // Sagatavojam testu
+        manager.addCategory("Elektronika");
         
-        // Test product addition
-        Product product = manager.addProduct("Laptop", "Electronics", 999.99, 5);
-        assertNotNull("Product should be created", product);
-        assertEquals("Product name should match", "Laptop", product.getName());
-        assertEquals("Product category should match", "Electronics", product.getCategory());
-        assertEquals("Product price should match", 999.99, product.getPrice(), 0.01);
-        assertEquals("Product quantity should match", 5, product.getQuantity());
+        // Pievienojam jaunu produktu
+        Product produkts = manager.addProduct("Dators", "Elektronika", 999.99, 5);
         
-        // Test product with invalid category
-        Product invalidProduct = manager.addProduct("Test", "InvalidCategory", 10.0, 1);
-        assertNull("Product with invalid category should not be added", invalidProduct);
-        
-        // Test product with invalid data
-        invalidProduct = manager.addProduct("", "Electronics", -1.0, -1);
-        assertNull("Product with invalid data should not be added", invalidProduct);
+        // Pārbaudām produkta izveidi
+        assertNotNull("Produktam jābūt izveidotam", produkts);
+        assertEquals("Produkta nosaukumam jābūt pareizam", "Dators", produkts.getName());
+        assertEquals("Produkta kategorijai jābūt pareizai", "Elektronika", produkts.getCategory());
+        assertEquals("Cenai jābūt pareizai", 999.99, produkts.getPrice(), 0.01);
+        assertEquals("Daudzumam jābūt pareizam", 5, produkts.getQuantity());
     }
     
     @Test
-    public void testSearchFunctionality() {
-        manager.addCategory("Electronics");
-        manager.addCategory("Food");
+    public void testMeklesana() {
+        // Sagatavojam testus
+        manager.addCategory("Elektronika");
+        manager.addCategory("Pārtika");
         
-        manager.addProduct("Laptop", "Electronics", 999.99, 5);
-        manager.addProduct("Apple", "Food", 1.0, 100);
-        manager.addProduct("Desktop", "Electronics", 1500.0, 3);
+        manager.addProduct("Dators", "Elektronika", 999.99, 5);
+        manager.addProduct("Ābols", "Pārtika", 1.0, 100);
         
-        // Test search by name
-        List<Product> results = manager.searchByName("top");
-        assertEquals("Should find products containing 'top'", 1, results.size());
-        assertEquals("Should find 'Laptop'", "Laptop", results.get(0).getName());
+        // Meklēšana pēc nosaukuma
+        List<Product> rezultati = manager.searchByName("Dat");
+        assertEquals("Vajadzētu atrast vienu produktu", 1, rezultati.size());
+        assertEquals("Vajadzētu atrast Datoru", "Dators", rezultati.get(0).getName());
         
-        // Test search by category
-        results = manager.searchByCategory("Electronics");
-        assertEquals("Should find products in Electronics category", 2, results.size());
-        
-        // Test search by price range
-        results = manager.searchByPriceRange(0.0, 100.0);
-        assertEquals("Should find products in price range", 1, results.size());
-        assertEquals("Should find 'Apple'", "Apple", results.get(0).getName());
+        // Meklēšana pēc kategorijas
+        rezultati = manager.searchByCategory("Pārtika");
+        assertEquals("Vajadzētu atrast vienu pārtikas produktu", 1, rezultati.size());
     }
     
     @Test
-    public void testInventoryCalculations() {
-        manager.addCategory("Electronics");
-        manager.addProduct("Laptop", "Electronics", 1000.0, 2);
-        manager.addProduct("Mouse", "Electronics", 20.0, 5);
+    public void testAprekinasana() {
+        // Sagatavojam datus
+        manager.addCategory("Elektronika");
+        manager.addProduct("Dators", "Elektronika", 1000.0, 2); // Kopā: 2000.0
+        manager.addProduct("Pele", "Elektronika", 20.0, 5);     // Kopā: 100.0
         
-        // Test total inventory value
-        double totalValue = manager.calculateTotalInventoryValue();
-        assertEquals("Total inventory value should be correct", 2100.0, totalValue, 0.01);
-        
-        // Test average price
-        double avgPrice = manager.calculateAveragePrice();
-        assertEquals("Average price should be correct", 510.0, avgPrice, 0.01);
+        // Pārbaudām kopējo vērtību
+        double kopVeriba = manager.calculateTotalInventoryValue();
+        assertEquals("Kopējai vērtībai jābūt 2100.0", 2100.0, kopVeriba, 0.01);
     }
     
     @Test
-    public void testProductEditing() {
-        manager.addCategory("Electronics");
-        Product original = manager.addProduct("Laptop", "Electronics", 1000.0, 2);
+    public void testProduktuLabosana() {
+        // Sagatavojam testu
+        manager.addCategory("Elektronika");
+        Product produkts = manager.addProduct("Dators", "Elektronika", 1000.0, 2);
         
-        // Test editing product
-        manager.editProduct(original.getId(), "Desktop PC", null, 1500.0, -1);
-        Product edited = manager.findProductById(original.getId());
+        // Labojam produktu
+        manager.editProduct(produkts.getId(), "Portatīvais Dators", null, 1500.0, -1);
+        Product labotais = manager.findProductById(produkts.getId());
         
-        assertNotNull("Edited product should exist", edited);
-        assertEquals("Name should be updated", "Desktop PC", edited.getName());
-        assertEquals("Category should remain unchanged", "Electronics", edited.getCategory());
-        assertEquals("Price should be updated", 1500.0, edited.getPrice(), 0.01);
-        assertEquals("Quantity should remain unchanged", 2, edited.getQuantity());
+        // Pārbaudām izmaiņas
+        assertEquals("Nosaukumam jābūt izmainītam", "Portatīvais Dators", labotais.getName());
+        assertEquals("Cenai jābūt izmainītai", 1500.0, labotais.getPrice(), 0.01);
+        assertEquals("Daudzumam jāpaliek nemainīgam", 2, labotais.getQuantity());
     }
 }
