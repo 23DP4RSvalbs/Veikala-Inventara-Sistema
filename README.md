@@ -1,19 +1,83 @@
 # Veikala Inventāra Pārvaldības Sistēma
 
-## Apraksts
-Java konsoļu aplikācija veikala inventāra pārvaldībai, kas nodrošina produktu un kategoriju pārvaldību ar paplašinātām funkcijām.
+Vienkārša un efektīva sistēma veikala produktu un kategoriju pārvaldībai.
 
-## Funkcionalitāte
-- Produktu pārvaldība (pievienošana, rediģēšana, dzēšana)
-- Kategoriju pārvaldība ar hierarhiju
-- Meklēšana un filtrēšana pēc vairākiem parametriem
-- Datu eksports CSV un JSON formātos
-- Statistikas aprēķini un pārskati
-- Konfigurējama lietotāja saskarne
+## 1. Prasības
+- Java Runtime Environment (JRE) 21 vai jaunāka
+- Maven 3.8+ (ja kompilējat no avota)
 
-## Instalācija
+## 2. Uzstādīšana
 ```bash
-git clone https://github.com/your-username/Veikala-Inventara-Sistema.git
+# Klonēt projektu
+git clone https://github.com/aesdetgewr/Veikala-Inventara-Sistema.git
+cd Veikala-Inventara-Sistema
+
+# Kompilēt projektu
+mvn clean install
+```
+
+## 3. Palaišana
+```bash
+# Palaist ar latviešu valodu (noklusētā)
+./mvnw clean compile exec:java
+
+# Palaist ar angļu valodu
+./mvnw clean compile exec:java -Dexec.args="en"
+```
+
+## 4. Funkcionalitāte
+
+### Produktu Pārvaldība
+- Produktu pievienošana
+- Produktu rediģēšana
+- Produktu dzēšana
+- Meklēšana un filtrēšana
+
+### Kategoriju Pārvaldība
+- Kategoriju izveide
+- Produktu piesaiste kategorijām
+- Kategoriju pārskati
+
+### Analīze
+- Kopējās vērtības aprēķins
+- Statistika pa kategorijām
+- Cenu un daudzumu pārskati
+
+## 5. Lietošanas Nosacījumi
+
+### Produktu un Kategoriju Nosaukumi
+Atļautie simboli:
+  - Lielie un mazie burti (A-Z, a-z)
+  - Pasvītrojuma simbols (_)
+
+Neatļautie simboli:
+  - Cipari (0-9)
+  - Atstarpes
+  - Speciālie simboli
+
+### Skaitliskās Vērtības
+Cenas ierobežojumi:
+  - Minimālā vērtība: 0.01
+  - Maksimālā vērtība: 1,000,000.00
+  - Formāts: cipari ar divām decimālzīmēm
+
+Daudzuma ierobežojumi:
+  - Minimālā vērtība: 0
+  - Maksimālā vērtība: 1,000,000
+  - Formāts: veseli pozitīvi skaitļi
+
+### Failu Struktūra
+Pamatdati:
+  - Produkti:         data/products.csv
+  - Kategorijas:      data/categories.csv
+
+Papilddati:
+  - Rezerves kopijas: data/backup/
+  - Eksporta mape:    data/export/
+
+## 6. Atbalsts
+```bash
+git clone https://github.com/aesdetgewr/Veikala-Inventara-Sistema
 cd Veikala-Inventara-Sistema
 mvn clean install
 ```
@@ -30,71 +94,51 @@ java -jar target/java-console-1.0-SNAPSHOT.jar
 - 8-9: Datu saglabāšana un programmas aizvēršana
 - 10: Informācija un statistika
 
-## Testēšana
-```bash
-mvn test
+## 5. Tehniskā Informācija
+
+### Projekta Struktūra
+```
+src/main/java/lv/rvt/
+├── interfaces/     # Interfeisi
+├── tools/         # Palīgrīki
+│   ├── BackupConfig.java    # Rezerves kopiju konfigurācija
+│   ├── ConfigManager.java   # Sistēmas konfigurācija
+│   ├── ConsoleUI.java      # Konsoles UI komponentes
+│   ├── CsvHelper.java      # CSV failu apstrāde
+│   ├── Helper.java         # Validācijas un palīgfunkcijas
+│   ├── MessageManager.java # Daudzvalodu atbalsts
+│   └── RecoveryManager.java # Datu atjaunošana
+├── Product.java   # Produktu modelis
+├── Category.java  # Kategoriju modelis
+└── Main.java      # Programmas sākumpunkts
 ```
 
-## Test Results
-| Test Category | Tests | Passed | Failed |
-|--------------|-------|---------|--------|
-| Products     | 15    | 15      | 0      |
-| Categories   | 8     | 8       | 0      |
-| File I/O     | 6     | 6       | 0      |
-| Validation   | 10    | 10      | 0      |
-| User Auth    | 4     | 4       | 0      |
-| Total        | 43    | 43      | 0      |
+### Datu Glabāšana
+- Produkti: data/products.csv
+- Kategorijas: data/categories.csv
+- Rezerves kopijas: data/backup/YYYYMMDD_HHMMSS/
+- Eksports: data/export/YYYYMMDD_HHMMSS/
 
-### Test Coverage
-- Line Coverage: 92%
-- Branch Coverage: 87%
-- Method Coverage: 95%
+### Sistēmas Prasības
+- Java Runtime Environment (JRE) 21
+- Brīva vieta diskā: vismaz 100MB
+- RAM: vismaz 256MB
+- Atbalstītās OS: Windows, Linux, macOS
 
-### Known Issues Fixed
-1. Category validation improved
-2. File error handling enhanced
-3. Input validation strengthened
-4. User authentication added
-5. Undo functionality implemented
+### Drošība un Datu Aizsardzība
+- Automātiskas rezerves kopijas ik pēc 5 izmaiņām
+- Validācija visiem ievades datiem
+- Datu integritātes pārbaudes
+- Droša failu lasīšana/rakstīšana
+#### Palīdzība
+- GitHub: https://github.com/aesdetgewr/Veikala-Inventara-Sistema
+- E-pasts: A231130RS@RVT.LV
 
-## Tehniskā dokumentācija
-### Klašu struktūra
-- `Main.java` - Programmas sākumpunkts
-- `UserInterfacePart1.java` - Lietotāja saskarnes pamata funkcijas
-- `UserInterfacePart2.java` - Paplašinātās lietotāja saskarnes funkcijas
-- `InventoryManager.java` - Produktu un kategoriju pārvaldība
-- `FileManager.java` - Datu saglabāšana un ielāde
-- `Category.java` - Kategoriju hierarhija
-- `Product.java` - Produkta entitāte
-- `User.java` - Lietotāju pārvaldība
-- `Helper.java` - Validācijas palīgfunkcijas
+### Kļūdu Ziņošana
+1. Aprakstiet problēmu
+2. Pievienojiet kļūdas paziņojumu
+3. Norādiet, kā atkārtot problēmu
 
-### Datu plūsma
-1. Lietotāja ievade → UI validācija
-2. Biznesa loģikas apstrāde
-3. Datu saglabāšana
-4. Atbildes attēlošana
-
-### Funkcijas
-- Produktu CRUD operācijas
-- Kategoriju pārvaldība ar hierarhiju
-- Lietotāju lomas (Administrators/Parasts lietotājs)
-- Datu eksports (CSV/JSON)
-- Paplašināta meklēšana un filtrēšana
-- Statistikas pārskati
-
-### Datu formāti
-- CSV fails produktiem: ID,ProductName,Category,Price,Quantity
-- CSV fails kategorijām: CategoryName
-- JSON eksports: Strukturēts produktu saraksts
-
-## Zināmās problēmas un risinājumi
-1. Ja programma neatrod datu failus, tie tiek automātiski izveidoti
-2. Kategoriju nosaukumos atļauti tikai burti un apakšsvītras
-3. Negatīvas vērtības cenām un daudzumiem tiek noraidītas
-
-## Kļūdu ziņojumi
-- "Nederīgs formāts": Nederīgs ievades formāts
-- "Kategorija jau eksistē": Kategorija jau eksistē
-- "Nav atrasts": Vienība nav atrasta
+---
+© 2025 Veikala Inventāra Sistēma
 

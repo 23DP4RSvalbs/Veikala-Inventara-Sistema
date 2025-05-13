@@ -1192,27 +1192,39 @@ public class UserInterface {
         String[] options = {messages.getString("menu.back")};
         
         ConsoleUI.clearScreen();
-        setCurrentScreen("LIETOŠANAS NOSACĪJUMI", options);
+        setCurrentScreen("LIETOŠANAS INSTRUKCIJA", options);
         
-        System.out.println(ConsoleUI.BLUE + "\nProduktu un Kategoriju Nosaukumi:" + ConsoleUI.RESET);
-        System.out.println("   - Atļauti tikai burti (a-z, A-Z)");
-        System.out.println("   - Atļauts pasvītrojuma simbols (_)");
-        System.out.println("   - NAV atļauti: cipari, atstarpes un citi simboli");
+        System.out.println(ConsoleUI.BLUE + "\n1. Produktu un Kategoriju Nosaukumi:" + ConsoleUI.RESET);
+        System.out.println("   + Atļauti tikai burti (a-z, A-Z)");
+        System.out.println("   + Atļauts pasvītrojuma simbols (_)");
+        System.out.println("   - NAV atļauti: cipari, atstarpes, speciālie simboli");
+        System.out.println("   Piemēri:");
+        System.out.println("   Pareizi:    Computer_Mouse, Keyboard, Office_Supplies");
+        System.out.println("   Nepareizi:  Mouse1, Key board, Office#Supplies");
         
-        System.out.println(ConsoleUI.BLUE + "\nSkaitliskās Vērtības:" + ConsoleUI.RESET);
-        System.out.println("   - Cenai jābūt pozitīvai (max: 99999999.99)");
-        System.out.println("   - Daudzumam jābūt pozitīvam (max: 99999999)");
+        System.out.println(ConsoleUI.BLUE + "\n2. Skaitliskās Vērtības:" + ConsoleUI.RESET);
+        System.out.println("   Cena:       0.01 - 1,000,000.00");
+        System.out.println("   Daudzums:   0 - 1,000,000");
+        System.out.println("   Piemēri:");
+        System.out.println("   Pareizi:    123.45, 1000, 0.99");
+        System.out.println("   Nepareizi:  -10, 1,000, 1.234");
         
-        System.out.println(ConsoleUI.BLUE + "\nValidācijas Nosacījumi:" + ConsoleUI.RESET);
-        System.out.println("   - Nosaukumi: tikai burti un _ simbols");
-        System.out.println("   - Kategorijas: tikai burti un _ simbols");
-        System.out.println("   - Cena: līdz 8 cipariem, 2 decimālie");
-        System.out.println("   - Daudzums: līdz 8 cipariem");
+        System.out.println(ConsoleUI.BLUE + "\n3. Navigācijas Īsceļi:" + ConsoleUI.RESET);
+        System.out.println("   0-9:        Izvēlieties menu opcijas");
+        System.out.println("   Enter:      Apstipriniet izvēli");
+        System.out.println("   'Atcelt':   Atgriezties iepriekšējā izvēlnē");
         
-        System.out.println(ConsoleUI.BLUE + "\nRezerves Kopijas:" + ConsoleUI.RESET);
-        System.out.println("   - Automātiska veidošana pēc noteikta skaita izmaiņu");
-        System.out.println("   - Tiek saglabātas data/backup/ mapē");
-        System.out.println("   - Var veidot manuāli caur iestatījumiem");
+        System.out.println(ConsoleUI.BLUE + "\n4. Datu Drošība:" + ConsoleUI.RESET);
+        System.out.println("   Saglabāšana: Automātiska pēc izmaiņām");
+        System.out.println("   Kopijas:     Automātiskas ik pēc 5 izmaiņām");
+        System.out.println("   Dati:        data/products.csv");
+        System.out.println("   Kategorijas: data/categories.csv");
+        
+        System.out.println(ConsoleUI.BLUE + "\n5. Noderīgi Padomi:" + ConsoleUI.RESET);
+        System.out.println("   - Regulāri eksportējiet datus");
+        System.out.println("   - Izmantojiet meklēšanas filtrus");
+        System.out.println("   - Pārbaudiet kategorijas pirms pievienošanas");
+        System.out.println("   - Sekojiet līdzi rezerves kopijām");
     }
 
     private void calculateInventory() {
