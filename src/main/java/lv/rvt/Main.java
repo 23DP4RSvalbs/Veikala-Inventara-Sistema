@@ -20,6 +20,23 @@ public class Main {
             String language = args.length > 0 && args[0].toLowerCase().equals("en") ? "en" : "lv";
             config.setProperty("app.language", language);
             
+            // Show loading animation
+            System.out.print("\033[?25l"); // Hide cursor
+            String[] frames = {
+                "📦..................",
+                "......📦............",
+                ".............📦.....",
+                "..................📦"
+            };
+            for (int i = 0; i < 2; i++) {
+                for (String frame : frames) {
+                    System.out.print("\r" + frame);
+                    Thread.sleep(200);
+                }
+            }
+            System.out.print("\r" + " ".repeat(40) + "\r");
+            System.out.print("\033[?25h"); // Show cursor
+
             // Start the application
             UserInterface ui = new UserInterface();
             ui.start();
