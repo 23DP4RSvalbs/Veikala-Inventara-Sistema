@@ -9,7 +9,10 @@ public class BackupConfig {
     private int currentChanges = 0;
 
     private BackupConfig() {
-      
+        // Reset changes counter
+        this.currentChanges = 0;
+        
+        // Load saved backup interval
         String savedInterval = ConfigManager.getInstance().getProperty("backup.interval");
         if (savedInterval != null) {
             try {
@@ -18,11 +21,9 @@ public class BackupConfig {
                     this.changesBeforeBackup = interval;
                 }
             } catch (NumberFormatException ignored) {
-              
                 ConfigManager.getInstance().setProperty("backup.interval", String.valueOf(changesBeforeBackup));
             }
         } else {
-          
             ConfigManager.getInstance().setProperty("backup.interval", String.valueOf(changesBeforeBackup));
         }
     }

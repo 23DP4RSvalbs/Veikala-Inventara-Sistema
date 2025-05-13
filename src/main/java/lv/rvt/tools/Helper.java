@@ -8,8 +8,8 @@ import java.util.regex.Pattern;
 public class Helper {
     private static final Pattern VALID_NAME_PATTERN = Pattern.compile("^[a-zA-Z_]+$");
     private static final Pattern VALID_NUMBER_PATTERN = Pattern.compile("^-?\\d*\\.?\\d+$");
-    private static final double MAX_PRICE = 1000000.0;
-    private static final int MAX_QUANTITY = 1000000;
+    public static final double MAX_PRICE = 1000000.0;
+    public static final int MAX_QUANTITY = 1000000;
     private static final String STANDARD_NUMBER_FORMAT_ERROR = "⚠ Cenai un Daudzumam jābūt formātā: 00000000.00";
 
     public static boolean validateCategory(String category) {

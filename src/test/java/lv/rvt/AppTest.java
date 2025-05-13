@@ -1,99 +1,114 @@
 package lv.rvt;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-import java.util.*;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.Test;
+import java.util.List;
 
+/**
+ * Unit tests for the Inventory Management System.
+ * Run these tests using: mvn test
+ */
 public class AppTest {
-    private final InventoryManager manager = new InventoryManager();
+    private InventoryManager manager;
     
-    @Test
-    public void testBasicFunctionality() {
-        // Test product addition
-        Product p = manager.addProduct("Test Product", "Test Category", 99.99, 10);
-        assertNotNull(p);
-        assertEquals("Test Product", p.getName());
-        assertEquals(99.99, p.getPrice());
-        assertEquals(10, p.getQuantity());
-        
-        // Test product deletion
-        manager.deleteProduct(p.getId());
-        assertNull(manager.findProductById(p.getId()));
+    @Before
+    public void setup() {
+        manager = new InventoryManager();
     }
     
     @Test
-    public void testCategoryManagement() {
+    public void testCategoryOperations() {
         // Test category addition
         manager.addCategory("Electronics");
-        List<Category> categories = manager.getCategories();
-        assertEquals(1, categories.size());
-        assertEquals("Electronics", categories.get(0).getName());
+        manager.addCategory("Food");
+        assertTrue("Category should exist after adding", manager.categoryExists("Electronics"));
+        assertTrue("Category should exist after adding", manager.categoryExists("Food"));
         
-        // Test product with category
-        Product p = manager.addProduct("Laptop", "Electronics", 1000.0, 3);
-        assertNotNull(p);
-        assertEquals("Electronics", p.getCategory());
+        // Test duplicate category
+        int initialSize = manager.getCategories().size();
+        manager.addCategory("Electronics");
+        assertEquals("Duplicate category should not be added", initialSize, manager.getCategories().size());
         
-        // Test category statistics
-        Map<String, Double> stats = manager.getCategoryStatistics();
-        assertEquals(3000.0, stats.get("Electronics"));
+        // Test invalid category
+        manager.addCategory("");
+        manager.addCategory(null);
+        assertEquals("Invalid categories should not be added", initialSize, manager.getCategories().size());
     }
     
     @Test
-    public void testSearch() {
-        manager.addCategory("Food");
+    public void testProductOperations() {
         manager.addCategory("Electronics");
         
+        // Test product addition
+        Product product = manager.addProduct("Laptop", "Electronics", 999.99, 5);
+        assertNotNull("Product should be created", product);
+        assertEquals("Product name should match", "Laptop", product.getName());
+        assertEquals("Product category should match", "Electronics", product.getCategory());
+        assertEquals("Product price should match", 999.99, product.getPrice(), 0.01);
+        assertEquals("Product quantity should match", 5, product.getQuantity());
+        
+        // Test product with invalid category
+        Product invalidProduct = manager.addProduct("Test", "InvalidCategory", 10.0, 1);
+        assertNull("Product with invalid category should not be added", invalidProduct);
+        
+        // Test product with invalid data
+        invalidProduct = manager.addProduct("", "Electronics", -1.0, -1);
+        assertNull("Product with invalid data should not be added", invalidProduct);
+    }
+    
+    @Test
+    public void testSearchFunctionality() {
+        manager.addCategory("Electronics");
+        manager.addCategory("Food");
+        
+        manager.addProduct("Laptop", "Electronics", 999.99, 5);
         manager.addProduct("Apple", "Food", 1.0, 100);
-        manager.addProduct("Laptop", "Electronics", 1000.0, 5);
+        manager.addProduct("Desktop", "Electronics", 1500.0, 3);
         
-        List<Product> results = manager.searchProducts("app");
-        assertEquals(2, results.size()); // Should find both "Apple" and "Laptop"
+        // Test search by name
+        List<Product> results = manager.searchByName("top");
+        assertEquals("Should find products containing 'top'", 1, results.size());
+        assertEquals("Should find 'Laptop'", "Laptop", results.get(0).getName());
         
-        results = manager.searchProducts("Food");
-        assertEquals(1, results.size());
-        assertEquals("Apple", results.get(0).getName());
+        // Test search by category
+        results = manager.searchByCategory("Electronics");
+        assertEquals("Should find products in Electronics category", 2, results.size());
+        
+        // Test search by price range
+        results = manager.searchByPriceRange(0.0, 100.0);
+        assertEquals("Should find products in price range", 1, results.size());
+        assertEquals("Should find 'Apple'", "Apple", results.get(0).getName());
     }
     
     @Test
-    public void testAdvancedAnalytics() {
-        // Setup test data
+    public void testInventoryCalculations() {
         manager.addCategory("Electronics");
-        manager.addCategory("Food");
-        manager.addProduct("LowStock", "Electronics", 500.0, 2);
-        manager.addProduct("HighValue", "Electronics", 2000.0, 5);
-        manager.addProduct("Normal", "Food", 10.0, 50);
-
-        // Test total value calculation
-        double expectedTotalValue = (500.0 * 2) + (2000.0 * 5) + (10.0 * 50);
-        assertEquals(expectedTotalValue, manager.calculateTotalInventoryValue());
-
-        // Test category statistics
-        Map<String, Double> categoryValues = manager.getCategoryStatistics();
-        assertEquals(11000.0, categoryValues.get("Electronics")); // (500*2 + 2000*5)
-        assertEquals(500.0, categoryValues.get("Food")); // (10*50)
-
-        // Test low stock products
-        List<Product> lowStock = manager.getLowStockProducts(3);
-        assertEquals(1, lowStock.size());
-        assertEquals("LowStock", lowStock.get(0).getName());
-
-        // Test price analytics
-        Product cheapest = manager.getCheapestProduct();
-        assertEquals("Normal", cheapest.getName());
-        assertEquals(10.0, cheapest.getPrice());
-
-        Product mostExpensive = manager.getMostExpensiveProduct();
-        assertEquals("HighValue", mostExpensive.getName());
-        assertEquals(2000.0, mostExpensive.getPrice());
-
-        // Test category analytics
-        Map.Entry<String, Double> cheapestCat = manager.getCheapestCategory();
-        assertEquals("Food", cheapestCat.getKey());
-        assertEquals(500.0, cheapestCat.getValue());
-
-        Map.Entry<String, Double> expensiveCat = manager.getMostExpensiveCategory();
-        assertEquals("Electronics", expensiveCat.getKey());
-        assertEquals(11000.0, expensiveCat.getValue());
+        manager.addProduct("Laptop", "Electronics", 1000.0, 2);
+        manager.addProduct("Mouse", "Electronics", 20.0, 5);
+        
+        // Test total inventory value
+        double totalValue = manager.calculateTotalInventoryValue();
+        assertEquals("Total inventory value should be correct", 2100.0, totalValue, 0.01);
+        
+        // Test average price
+        double avgPrice = manager.calculateAveragePrice();
+        assertEquals("Average price should be correct", 510.0, avgPrice, 0.01);
+    }
+    
+    @Test
+    public void testProductEditing() {
+        manager.addCategory("Electronics");
+        Product original = manager.addProduct("Laptop", "Electronics", 1000.0, 2);
+        
+        // Test editing product
+        manager.editProduct(original.getId(), "Desktop PC", null, 1500.0, -1);
+        Product edited = manager.findProductById(original.getId());
+        
+        assertNotNull("Edited product should exist", edited);
+        assertEquals("Name should be updated", "Desktop PC", edited.getName());
+        assertEquals("Category should remain unchanged", "Electronics", edited.getCategory());
+        assertEquals("Price should be updated", 1500.0, edited.getPrice(), 0.01);
+        assertEquals("Quantity should remain unchanged", 2, edited.getQuantity());
     }
 }

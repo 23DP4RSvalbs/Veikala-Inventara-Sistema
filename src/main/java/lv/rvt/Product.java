@@ -52,8 +52,8 @@ public class Product {
     }
 
     public void setPrice(double price) {
-        if (price < 0) {
-            throw new IllegalArgumentException("Cena nevar būt negatīva");
+        if (!Helper.validatePrice(price)) {
+            throw new IllegalArgumentException("Cena jābūt starp 0 un " + Helper.MAX_PRICE);
         }
         this.price = price;
     }

@@ -32,7 +32,7 @@ public class UserInterface {
                 } else if (choice.toLowerCase().equals("4")) {
                     editProduct();
                 } else if (choice.toLowerCase().equals("5")) {
-                    deleteProduct();
+                    deleteMenu();
                 } else if (choice.toLowerCase().equals("6")) {
                     dataExportImport();
                 } else if (choice.toLowerCase().equals("7")) {
@@ -60,8 +60,8 @@ public class UserInterface {
             "4. " + ConsoleUI.BLUE + messages.getString("menu.edit.product") + ConsoleUI.RESET,
             "5. " + ConsoleUI.BLUE + messages.getString("menu.delete.product") + ConsoleUI.RESET,
             "6. " + ConsoleUI.BLUE + messages.getString("menu.data") + ConsoleUI.RESET,
-            "7. " + ConsoleUI.BLUE + messages.getString("menu.settings") + ConsoleUI.RESET,
-            "8. " + ConsoleUI.BLUE + "Meklēt inventāru" + ConsoleUI.RESET,
+            "7. " + ConsoleUI.BLUE + "Iestatījumi" + ConsoleUI.RESET,
+            "8. " + ConsoleUI.BLUE + "Meklēt produktus" + ConsoleUI.RESET,
             "9. " + ConsoleUI.BLUE + "Aprēķināt inventāru" + ConsoleUI.RESET,
             "0. " + ConsoleUI.RED + messages.getString("menu.exit") + ConsoleUI.RESET
         };
@@ -108,6 +108,8 @@ public class UserInterface {
     private void displayFilteredProducts(List<Product> products, String sortBy, String order) {
         if (products.isEmpty()) {
             ConsoleUI.printError(messages.getString("products.none"));
+            System.out.print("\n" + ConsoleUI.BLUE + messages.getString("prompt.continue") + ConsoleUI.RESET);
+            scanner.nextLine();
             return;
         }
 
@@ -360,7 +362,35 @@ public class UserInterface {
         while (true) {
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.edit.product"));
-            displayFilteredProducts(manager.getProducts(), "id", "asc");
+            
+            // Display products without the enter prompt
+            List<Product> products = manager.getProducts();
+            if (!products.isEmpty()) {
+                List<Product> sorted = manager.sortProducts("id", "asc");
+                ConsoleUI.printTableHeader(
+                    messages.getString("product.id.label"),
+                    messages.getString("product.name.label"),
+                    messages.getString("product.category.label"),
+                    messages.getString("product.price.label"),
+                    messages.getString("product.quantity.label")
+                );
+                
+                for (Product p : sorted) {
+                    if (products.contains(p)) {
+                        ConsoleUI.printTableRow(
+                            String.valueOf(p.getId()),
+                            p.getName(),
+                            p.getCategory(),
+                            String.format("%.2f", p.getPrice()),
+                            String.valueOf(p.getQuantity())
+                        );
+                    }
+                }
+                ConsoleUI.printTableFooter(5);
+            } else {
+                ConsoleUI.printError(messages.getString("products.none"));
+            }
+            
             System.out.print("\n" + ConsoleUI.BLUE + messages.getString("product.id.prompt") + ConsoleUI.RESET);
             
             String idStr = scanner.nextLine().trim();
@@ -503,13 +533,65 @@ public class UserInterface {
         }
     }
 
+    private void deleteMenu() {
+        String[] options = {
+            "1. " + ConsoleUI.BLUE + "Dzēst produktu" + ConsoleUI.RESET,
+            "2. " + ConsoleUI.BLUE + "Dzēst kategoriju" + ConsoleUI.RESET,
+            "0. " + ConsoleUI.RED + messages.getString("menu.back") + ConsoleUI.RESET
+        };
+
+        while (true) {
+            ConsoleUI.clearScreen();
+            setCurrentScreen("DZĒST PRODUKTU/KATEGORIJU", options);
+            ConsoleUI.printMenu(currentScreen, options);
+            
+            String choice = scanner.nextLine().trim();
+            if (choice.equals("0")) {
+                return;
+            }
+            
+            if (choice.equals("1")) {
+                deleteProduct();
+            } else if (choice.equals("2")) {
+                deleteCategory();
+            }
+        }
+    }
+
     private void deleteProduct() {
         Product product = null;
         
         while (true) {
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.delete.product"));
-            displayFilteredProducts(manager.getProducts(), "id", "asc");
+            
+            // Display products without the enter prompt
+            List<Product> products = manager.getProducts();
+            if (!products.isEmpty()) {
+                List<Product> sorted = manager.sortProducts("id", "asc");
+                ConsoleUI.printTableHeader(
+                    messages.getString("product.id.label"),
+                    messages.getString("product.name.label"),
+                    messages.getString("product.category.label"),
+                    messages.getString("product.price.label"),
+                    messages.getString("product.quantity.label")
+                );
+                
+                for (Product p : sorted) {
+                    if (products.contains(p)) {
+                        ConsoleUI.printTableRow(
+                            String.valueOf(p.getId()),
+                            p.getName(),
+                            p.getCategory(),
+                            String.format("%.2f", p.getPrice()),
+                            String.valueOf(p.getQuantity())
+                        );
+                    }
+                }
+                ConsoleUI.printTableFooter(5);
+            } else {
+                ConsoleUI.printError(messages.getString("products.none"));
+            }
             
             System.out.print("\n" + ConsoleUI.BLUE + messages.getString("product.id.prompt") + ConsoleUI.RESET);
             String idStr = scanner.nextLine().trim();
@@ -523,8 +605,7 @@ public class UserInterface {
             
             try {
                 if (!idStr.matches("^\\d+$")) {
-                    ConsoleUI.printError(Helper.getStandardNumberFormatError());
-                    scanner.nextLine();
+                    ConsoleUI.printError("Nederīgs ID (jābūt veselam pozitīvam skaitlim)");
                     continue;
                 }
                 
@@ -546,13 +627,15 @@ public class UserInterface {
         while (true) {
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.delete.product"));
-            System.out.println("\n" + ConsoleUI.BLUE + "Dzēst produktu:" + ConsoleUI.RESET);
+            System.out.println(ConsoleUI.BLUE + "\nVai tiešām vēlaties dzēst šo produktu?" + ConsoleUI.RESET);
+            System.out.println(ConsoleUI.WHITE + "\nInformācija par produktu:" + ConsoleUI.RESET);
+            System.out.println("  ID: " + product.getId());
             System.out.println("  Nosaukums: " + product.getName());
             System.out.println("  Kategorija: " + product.getCategory());
-            System.out.println("  Cena: " + String.format("%.2f", product.getPrice()));
+            System.out.println("  Cena: " + String.format("%.2f EUR", product.getPrice()));
             System.out.println("  Daudzums: " + product.getQuantity());
             
-            System.out.print("\n" + ConsoleUI.BLUE + messages.getString("product.delete.confirm") + " (j/n): " + ConsoleUI.RESET);
+            System.out.print("\n" + ConsoleUI.BLUE + "Vai vēlaties dzēst šo produktu? (j/n): " + ConsoleUI.RESET);
             String confirm = scanner.nextLine().trim().toLowerCase();
             if (confirm.equals("n")) {
                 return;
@@ -580,49 +663,98 @@ public class UserInterface {
         }
     }
 
-    private void dataExportImport() {
-        String[] options = {
-            "1. " + ConsoleUI.BLUE + messages.getString("data.export") + ConsoleUI.RESET,
-            "2. " + ConsoleUI.BLUE + messages.getString("data.import") + ConsoleUI.RESET,
-            "0. " + ConsoleUI.RED + messages.getString("menu.back") + ConsoleUI.RESET
-        };
-        
+    private void deleteCategory() {
         while (true) {
             ConsoleUI.clearScreen();
-            setCurrentScreen(messages.getString("data.header").toUpperCase(), options);
+            ConsoleUI.printHeader("DZĒST KATEGORIJU");
+            
+            displayCategories();
             System.out.println();
             
-            System.out.print(ConsoleUI.BLUE + messages.getString("menu.choice.prompt") + ConsoleUI.RESET);
-            String choice = scanner.nextLine().trim();
+            if (manager.getCategories().isEmpty()) {
+                ConsoleUI.printError("Nav nevienas kategorijas");
+                System.out.print("\n" + ConsoleUI.BLUE + messages.getString("prompt.continue") + ConsoleUI.RESET);
+                scanner.nextLine();
+                return;
+            }
             
-            if (choice.isEmpty() || !choice.matches("[0-2]")) {
+            System.out.print(ConsoleUI.BLUE + "Ievadiet kategorijas nosaukumu (vai 'Atcelt'): " + ConsoleUI.RESET);
+            String name = scanner.nextLine().trim();
+            
+            if (name.equalsIgnoreCase("Atcelt")) {
+                return;
+            }
+            
+            if (name.isEmpty()) {
                 continue;
             }
+            
+            if (!name.matches("^[a-zA-Z_]+$")) {
+                ConsoleUI.printError(messages.getString("validation.category.invalid"));
+                scanner.nextLine();
+                continue;
+            }
+            
+            if (!manager.categoryExists(name)) {
+                ConsoleUI.printError("Kategorija netika atrasta");
+                scanner.nextLine();
+                continue;
+            }
+            
+            if (manager.hasProductsInCategory(name)) {
+                ConsoleUI.printError("Nevar dzēst kategoriju, jo tajā ir produkti");
+                scanner.nextLine();
+                continue;
+            }
+            
+            manager.deleteCategory(name);
+            ConsoleUI.printSuccess("Kategorija veiksmīgi izdzēsta");
+            System.out.println("\n" + ConsoleUI.BLUE + messages.getString("prompt.continue") + ConsoleUI.RESET);
+            scanner.nextLine();
+            return;
+        }
+    }
+
+    private void dataExportImport() {
+        while (true) {
+            ConsoleUI.clearScreen();
+            ConsoleUI.printHeader(messages.getString("data.header").toUpperCase());
+            
+            System.out.println("\n1. " + ConsoleUI.BLUE + "Eksportēt datus CSV formātā" + ConsoleUI.RESET);
+            System.out.println("2. " + ConsoleUI.BLUE + "Importēt datus no CSV" + ConsoleUI.RESET);
+            System.out.println("0. " + ConsoleUI.RED + "Atcelt" + ConsoleUI.RESET);
+            
+            System.out.print("\n");
+            String choice = scanner.nextLine().trim();
             
             if (choice.equals("0")) {
                 return;
             }
             
+            if (!choice.matches("[0-2]")) {
+                ConsoleUI.printError("Nederīga izvēle. Lūdzu izvēlieties opciju no 0 līdz 2.");
+                continue;
+            }
+            
             try {
-                if (choice.equals("1")) {
-                    fileManager.exportData("csv");
-                    ConsoleUI.printSuccess(messages.getString("export.success"));
-                    System.out.println("\nNospiediet Enter, lai turpinātu...");
-                    scanner.nextLine();
-                    return;
-                }
-                
-                if (choice.equals("2")) {
-                    fileManager.importData("csv");
-                    ConsoleUI.printSuccess(messages.getString("import.success"));
-                    System.out.println("\nNospiediet Enter, lai turpinātu...");
-                    scanner.nextLine();
-                    return;
+                switch (choice) {
+                    case "1" -> {
+                        fileManager.exportData("csv");
+                        ConsoleUI.printSuccess("Dati veiksmīgi eksportēti uz CSV failu");
+                        System.out.println("\n" + ConsoleUI.BLUE + "Nospiediet Enter, lai turpinātu..." + ConsoleUI.RESET);
+                        scanner.nextLine();
+                        return;
+                    }
+                    case "2" -> {
+                        fileManager.importData("csv");
+                        ConsoleUI.printSuccess("Dati veiksmīgi importēti no CSV faila");
+                        System.out.println("\n" + ConsoleUI.BLUE + "Nospiediet Enter, lai turpinātu..." + ConsoleUI.RESET);
+                        scanner.nextLine();
+                        return;
+                    }
                 }
             } catch (Exception e) {
                 ConsoleUI.printError(e.getMessage());
-                System.out.println("\nNospiediet Enter, lai turpinātu...");
-                scanner.nextLine();
                 continue;
             }
         }
@@ -633,6 +765,7 @@ public class UserInterface {
             "1. " + ConsoleUI.BLUE + messages.getString("search.by.name") + ConsoleUI.RESET,
             "2. " + ConsoleUI.BLUE + messages.getString("search.by.category") + ConsoleUI.RESET,
             "3. " + ConsoleUI.BLUE + messages.getString("search.by.price.range") + ConsoleUI.RESET,
+            "4. " + ConsoleUI.BLUE + "Meklēt pēc daudzuma diapazona" + ConsoleUI.RESET,
             "0. " + ConsoleUI.RED + messages.getString("menu.back") + ConsoleUI.RESET
         };
 
@@ -641,6 +774,7 @@ public class UserInterface {
             setCurrentScreen(messages.getString("search.header"), options);
             ConsoleUI.printMenu(currentScreen, options);
             
+            System.out.print(ConsoleUI.BLUE + messages.getString("prompt.choice") + ConsoleUI.RESET);
             String choice = scanner.nextLine().trim();
             
             if (choice.equals("0")) {
@@ -651,6 +785,7 @@ public class UserInterface {
                 case "1" -> searchByName();
                 case "2" -> searchByCategory();
                 case "3" -> searchByPriceRange();
+                case "4" -> searchByQuantityRange();
                 default -> {
                     continue;
                 }
@@ -664,8 +799,12 @@ public class UserInterface {
             System.out.print(ConsoleUI.BLUE + messages.getString("search.name.prompt") + ConsoleUI.RESET);
             String name = scanner.nextLine().trim();
             
-            if (name.isEmpty() || name.equalsIgnoreCase("0")) {
+            if (name.equalsIgnoreCase("Atcelt")) {
                 return;
+            }
+            
+            if (name.isEmpty()) {
+                continue;
             }
             
             List<Product> results = manager.searchByName(name);
@@ -683,17 +822,14 @@ public class UserInterface {
     private void searchByCategory() {
         while (true) {
             ConsoleUI.clearScreen();
-            displayCategories();
             System.out.print(ConsoleUI.BLUE + messages.getString("search.category.prompt") + ConsoleUI.RESET);
             String category = scanner.nextLine().trim();
             
-            if (category.isEmpty() || category.equalsIgnoreCase("0")) {
+            if (category.equalsIgnoreCase("Atcelt")) {
                 return;
             }
             
-            if (!manager.categoryExists(category)) {
-                ConsoleUI.printError(messages.getString("product.category.invalid"));
-                scanner.nextLine();
+            if (category.isEmpty()) {
                 continue;
             }
             
@@ -712,14 +848,18 @@ public class UserInterface {
     private void searchByPriceRange() {
         while (true) {
             ConsoleUI.clearScreen();
-            System.out.print(ConsoleUI.BLUE + messages.getString("search.price.min") + ": " + ConsoleUI.RESET);
+            System.out.print(ConsoleUI.BLUE + messages.getString("search.price.min") + ConsoleUI.RESET);
             String minStr = scanner.nextLine().trim();
             
-            if (minStr.isEmpty() || minStr.equalsIgnoreCase("0")) {
+            if (minStr.equalsIgnoreCase("Atcelt")) {
                 return;
             }
             
-            if (!minStr.matches("\\d{1,8}(\\.\\d{0,2})?")) {
+            if (minStr.isEmpty()) {
+                continue;
+            }
+            
+            if (!minStr.matches("^\\d{1,8}(\\.\\d{0,2})?$")) {
                 ConsoleUI.printError(Helper.getStandardNumberFormatError());
                 scanner.nextLine();
                 continue;
@@ -737,14 +877,18 @@ public class UserInterface {
                 continue;
             }
 
-            System.out.print(ConsoleUI.BLUE + messages.getString("search.price.max") + ": " + ConsoleUI.RESET);
+            System.out.print(ConsoleUI.BLUE + messages.getString("search.price.max") + ConsoleUI.RESET);
             String maxStr = scanner.nextLine().trim();
             
-            if (maxStr.isEmpty() || maxStr.equalsIgnoreCase("0")) {
+            if (maxStr.equalsIgnoreCase("Atcelt")) {
                 return;
             }
             
-            if (!maxStr.matches("\\d{1,8}(\\.\\d{0,2})?")) {
+            if (maxStr.isEmpty()) {
+                continue;
+            }
+            
+            if (!maxStr.matches("^\\d{1,8}(\\.\\d{0,2})?$")) {
                 ConsoleUI.printError(Helper.getStandardNumberFormatError());
                 scanner.nextLine();
                 continue;
@@ -776,6 +920,85 @@ public class UserInterface {
             }
             
             displayFilteredProducts(results, "price", "asc");
+            return;
+        }
+    }
+
+    private void searchByQuantityRange() {
+        while (true) {
+            ConsoleUI.clearScreen();
+            System.out.print(ConsoleUI.BLUE + "Ievadiet minimālo daudzumu (vai 'Atcelt'): " + ConsoleUI.RESET);
+            String minStr = scanner.nextLine().trim();
+            
+            if (minStr.equalsIgnoreCase("Atcelt")) {
+                return;
+            }
+            
+            if (minStr.isEmpty()) {
+                continue;
+            }
+            
+            if (!minStr.matches("^\\d{1,8}$")) {
+                ConsoleUI.printError(Helper.getStandardNumberFormatError());
+                scanner.nextLine();
+                continue;
+            }
+            
+            int min;
+            try {
+                min = Integer.parseInt(minStr);
+                if (min < 0 || min > 99999999) {
+                    ConsoleUI.printError(Helper.getStandardNumberFormatError());
+                    scanner.nextLine();
+                    continue;
+                }
+            } catch (NumberFormatException e) {
+                continue;
+            }
+
+            System.out.print(ConsoleUI.BLUE + "Ievadiet maksimālo daudzumu (vai 'Atcelt'): " + ConsoleUI.RESET);
+            String maxStr = scanner.nextLine().trim();
+            
+            if (maxStr.equalsIgnoreCase("Atcelt")) {
+                return;
+            }
+            
+            if (maxStr.isEmpty()) {
+                continue;
+            }
+            
+            if (!maxStr.matches("^\\d{1,8}$")) {
+                ConsoleUI.printError(Helper.getStandardNumberFormatError());
+                scanner.nextLine();
+                continue;
+            }
+            
+            int max;
+            try {
+                max = Integer.parseInt(maxStr);
+                if (max < 0 || max > 99999999) {
+                    ConsoleUI.printError(Helper.getStandardNumberFormatError());
+                    scanner.nextLine();
+                    continue;
+                }
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            
+            if (max < min) {
+                ConsoleUI.printError("Maksimālajam daudzumam jābūt lielākam par minimālo");
+                scanner.nextLine();
+                continue;
+            }
+            
+            List<Product> results = manager.searchByQuantityRange(min, max);
+            if (results.isEmpty()) {
+                ConsoleUI.printError(messages.getString("search.no.results"));
+                scanner.nextLine();
+                continue;
+            }
+            
+            displayFilteredProducts(results, "quantity", "asc");
             return;
         }
     }
@@ -830,18 +1053,6 @@ public class UserInterface {
                 continue;
             }
             
-            if (!category.matches("^[a-zA-Z_]+$")) {
-                ConsoleUI.printError(messages.getString("validation.category.invalid"));
-                scanner.nextLine();
-                continue;
-            }
-            
-            if (!manager.categoryExists(category)) {
-                ConsoleUI.printError(messages.getString("product.category.invalid"));
-                scanner.nextLine();
-                continue;
-            }
-            
             List<Product> results = manager.searchByCategory(category);
             if (results.isEmpty()) {
                 ConsoleUI.printError(messages.getString("search.no.results"));
@@ -887,19 +1098,18 @@ public class UserInterface {
 
     private void configureBackupChanges() {
         String[] options = {
-            "1. " + ConsoleUI.BLUE + "Katru reizi" + ConsoleUI.RESET,
-            "2. " + ConsoleUI.BLUE + "Ik pēc 5 izmaiņām" + ConsoleUI.RESET,
-            "3. " + ConsoleUI.BLUE + "Ik pēc 10 izmaiņām" + ConsoleUI.RESET,
-            "4. " + ConsoleUI.BLUE + "Ik pēc 20 izmaiņām" + ConsoleUI.RESET,
-            "0. " + ConsoleUI.RED + "Atcelt" + ConsoleUI.RESET
+            "1. " + ConsoleUI.BLUE + messages.getString("backup.changes.1") + ConsoleUI.RESET,
+            "2. " + ConsoleUI.BLUE + messages.getString("backup.changes.5") + ConsoleUI.RESET,
+            "3. " + ConsoleUI.BLUE + messages.getString("backup.changes.10") + ConsoleUI.RESET,
+            "4. " + ConsoleUI.BLUE + messages.getString("backup.changes.20") + ConsoleUI.RESET,
+            "0. " + ConsoleUI.RED + messages.getString("menu.back") + ConsoleUI.RESET
         };
         
         while (true) {
             ConsoleUI.clearScreen();
-            setCurrentScreen("REZERVES KOPIJU IESTATĪJUMI", options);
-            System.out.println();
+            setCurrentScreen(messages.getString("backup.changes.type"), options);
+            ConsoleUI.printMenu(currentScreen, options);
             
-            System.out.print(ConsoleUI.BLUE + messages.getString("menu.choice.prompt") + ConsoleUI.RESET);
             String choice = scanner.nextLine().trim();
             
             if (choice.isEmpty() || !choice.matches("[0-4]")) {
@@ -940,21 +1150,19 @@ public class UserInterface {
 
     private void showSettings() {
         String[] options = {
-            "1. " + ConsoleUI.BLUE + "Izveidot rezerves kopiju" + ConsoleUI.RESET,
-            "2. " + ConsoleUI.BLUE + "Nomainīt rezerves kopiju veidošanu" + ConsoleUI.RESET,
-            "3. " + ConsoleUI.BLUE + "Lietošanas Nosacījumi" + ConsoleUI.RESET,
-            "0. " + ConsoleUI.RED + "Atcelt" + ConsoleUI.RESET
+            "1. " + ConsoleUI.BLUE + messages.getString("settings.backup.changes") + ConsoleUI.RESET,
+            "2. " + ConsoleUI.BLUE + "Lietošanas Nosacījumi" + ConsoleUI.RESET,
+            "0. " + ConsoleUI.RED + messages.getString("menu.back") + ConsoleUI.RESET
         };
         
         while (true) {
             ConsoleUI.clearScreen();
-            setCurrentScreen("IESTATĪJUMI", options);
-            System.out.println();
+            setCurrentScreen(messages.getString("settings.header"), options);
+            ConsoleUI.printMenu(currentScreen, options);
             
-            System.out.print(ConsoleUI.BLUE + messages.getString("menu.choice.prompt") + ConsoleUI.RESET);
             String choice = scanner.nextLine().trim();
             
-            if (choice.isEmpty() || !choice.matches("[0-3]")) {
+            if (choice.isEmpty() || !choice.matches("[0-2]")) {
                 continue;
             }
             
@@ -964,25 +1172,16 @@ public class UserInterface {
             
             try {
                 switch (choice) {
-                    case "1" -> {
-                        RecoveryManager.createBackup();
-                        BackupConfig.getInstance().resetChanges();
-                        ConsoleUI.printSuccess("Rezerves kopija veiksmīgi izveidota");
-                        System.out.println("\nNospiediet Enter, lai turpinātu...");
-                        scanner.nextLine();
-                    }
+                    case "1" -> configureBackupChanges();
                     case "2" -> {
-                        configureBackupChanges();
-                    }
-                    case "3" -> {
                         showUsageInstructions();
-                        System.out.println("\nNospiediet Enter, lai turpinātu...");
+                        System.out.println("\n" + ConsoleUI.BLUE + messages.getString("prompt.continue") + ConsoleUI.RESET);
                         scanner.nextLine();
                     }
                 }
             } catch (Exception e) {
                 ConsoleUI.printError(e.getMessage());
-                System.out.println("\nNospiediet Enter, lai turpinātu...");
+                System.out.println("\n" + ConsoleUI.BLUE + messages.getString("prompt.continue") + ConsoleUI.RESET);
                 scanner.nextLine();
                 continue;
             }
