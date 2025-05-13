@@ -1,7 +1,4 @@
-package lv.rvt;
-
-import lv.rvt.tools.RecoveryManager;
-import lv.rvt.tools.ConfigManager;
+package lv.rvt.tools;
 
 public class BackupConfig {
     private static BackupConfig instance;
@@ -9,10 +6,6 @@ public class BackupConfig {
     private int currentChanges = 0;
 
     private BackupConfig() {
-        // Reset changes counter
-        this.currentChanges = 0;
-        
-        // Load saved backup interval
         String savedInterval = ConfigManager.getInstance().getProperty("backup.interval");
         if (savedInterval != null) {
             try {
@@ -20,7 +13,7 @@ public class BackupConfig {
                 if (interval > 0) {
                     this.changesBeforeBackup = interval;
                 }
-            } catch (NumberFormatException ignored) {
+            } catch (NumberFormatException e) {
                 ConfigManager.getInstance().setProperty("backup.interval", String.valueOf(changesBeforeBackup));
             }
         } else {
@@ -38,13 +31,8 @@ public class BackupConfig {
     public void setChangesBeforeBackup(int changes) {
         if (changes > 0) {
             this.changesBeforeBackup = changes;
-           
             ConfigManager.getInstance().setProperty("backup.interval", String.valueOf(changes));
         }
-    }
-
-    public int getChangesBeforeBackup() {
-        return changesBeforeBackup;
     }
 
     public void incrementChanges() {
@@ -57,9 +45,5 @@ public class BackupConfig {
 
     public void resetChanges() {
         currentChanges = 0;
-    }
-
-    public int getCurrentChanges() {
-        return currentChanges;
     }
 }

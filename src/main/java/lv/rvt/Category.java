@@ -1,12 +1,13 @@
 package lv.rvt;
 
 import lv.rvt.tools.Helper;
+import java.util.Objects;
 
 public class Category {
     private String name;
 
     public Category(String name) {
-        this.name = name;
+        setName(name);
     }
 
     public String getName() {
@@ -26,14 +27,14 @@ public class Category {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Category category = (Category) obj;
-        return name.equals(category.name);
+        if (obj instanceof Category other) {
+            return Objects.equals(name, other.name);
+        }
+        return false;
     }
 
     @Override
     public int hashCode() {
-        return name.hashCode();
+        return Objects.hash(name);
     }
 }

@@ -2,9 +2,10 @@ package lv.rvt.tools;
 
 import java.io.*;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class RecoveryManager {
     private static final String DATA_DIR = "data";
@@ -12,64 +13,61 @@ public class RecoveryManager {
     private static final String PRODUCTS_FILE = DATA_DIR + "/products.csv";
     private static final String CATEGORIES_FILE = DATA_DIR + "/categories.csv";
 
-    public static void createBackup() {
-        try {
-       
-            Files.createDirectories(Paths.get(BACKUP_DIR));
-
-            
-            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-            String backupPath = BACKUP_DIR + "/" + timestamp;
-            Files.createDirectories(Paths.get(backupPath));
-
-            Path productsSource = Paths.get(PRODUCTS_FILE);
-            Path categoriesSource = Paths.get(CATEGORIES_FILE);
-
-            if (Files.exists(productsSource) && Files.exists(categoriesSource)) {
-           
-                Path productsTarget = Paths.get(backupPath + "/products.csv");
-                Path categoriesTarget = Paths.get(backupPath + "/categories.csv");
-
-                Files.copy(productsSource, productsTarget, StandardCopyOption.REPLACE_EXISTING);
-                Files.copy(categoriesSource, categoriesTarget, StandardCopyOption.REPLACE_EXISTING);
-
-                
-            } else {
-                System.out.println("Nevar izveidot rezerves kopiju - nav atrasti avota faili");
+    public static void main(String[] args) {
+        if (args.length == 2 && args[0].equals("clean")) {
+            try {
+                int keepCount = Integer.parseInt(args[1]);
+                cleanupOldBackups(keepCount);
+                System.out.println("Backup cleanup complete - keeping " + keepCount + " most recent backups");
+            } catch (NumberFormatException e) {
+                System.err.println("Error: second argument must be a number");
             }
+        } else {
+            System.out.println("Usage: RecoveryManager clean <number_of_backups_to_keep>");
+        }
+    }
+
+    public static void createBackup() {
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        Path backupPath = Paths.get(BACKUP_DIR, timestamp);
+
+        try {
+            Files.createDirectories(backupPath);
+            Files.copy(Paths.get(PRODUCTS_FILE), backupPath.resolve("products.csv"), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(Paths.get(CATEGORIES_FILE), backupPath.resolve("categories.csv"), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            System.err.println("Kļūda veidojot rezerves kopiju: " + e.getMessage());
+            throw new RuntimeException("⚠ Neizdevās izveidot rezerves kopiju: " + e.getMessage());
         }
     }
 
     public static void restoreFromLatestBackup() {
         try {
             Path backupDir = Paths.get(BACKUP_DIR);
-            if (!Files.exists(backupDir)) {            System.out.println("⚠ Nav atrasta neviena rezerves kopija");
-            return;
-        }
-
-   
-        String latestBackup = Files.list(backupDir)
-            .filter(Files::isDirectory)
-            .map(Path::getFileName)
-            .map(Path::toString)
-            .sorted()
-            .reduce((first, second) -> second)
-            .orElse(null);
-
-        if (latestBackup == null) {
-            System.out.println("⚠ Nav atrasta neviena rezerves kopija");
+            if (!Files.exists(backupDir)) {
+                System.out.println("⚠ Nav atrasta neviena rezerves kopija");
                 return;
             }
 
-            String backupPath = BACKUP_DIR + "/" + latestBackup;
-            Path productsSource = Paths.get(backupPath + "/products.csv");
-            Path categoriesSource = Paths.get(backupPath + "/categories.csv");
+            String latestBackup = Files.list(backupDir)
+                .filter(Files::isDirectory)
+                .map(Path::getFileName)
+                .map(Path::toString)
+                .sorted()
+                .reduce((first, second) -> second)
+                .orElse(null);
 
-            if (Files.exists(productsSource) && Files.exists(categoriesSource)) {
-                Files.copy(productsSource, Paths.get(PRODUCTS_FILE), StandardCopyOption.REPLACE_EXISTING);
-                Files.copy(categoriesSource, Paths.get(CATEGORIES_FILE), StandardCopyOption.REPLACE_EXISTING);
+            if (latestBackup == null) {
+                System.out.println("⚠ Nav atrasta neviena rezerves kopija");
+                return;
+            }
+
+            Path backupPath = backupDir.resolve(latestBackup);
+            Path productsBackup = backupPath.resolve("products.csv");
+            Path categoriesBackup = backupPath.resolve("categories.csv");
+
+            if (Files.exists(productsBackup) && Files.exists(categoriesBackup)) {
+                Files.copy(productsBackup, Paths.get(PRODUCTS_FILE), StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(categoriesBackup, Paths.get(CATEGORIES_FILE), StandardCopyOption.REPLACE_EXISTING);
                 System.out.println("Dati veiksmīgi atjaunoti no rezerves kopijas: " + backupPath);
             } else {
                 System.out.println("⚠ Rezerves kopijas faili nav atrasti: " + backupPath);
@@ -80,38 +78,46 @@ public class RecoveryManager {
     }
 
     public static void cleanupOldBackups(int keepCount) {
+        if (keepCount < 1) {
+            throw new IllegalArgumentException("Must keep at least 1 backup");
+        }
+
         try {
             Path backupDir = Paths.get(BACKUP_DIR);
             if (!Files.exists(backupDir)) {
                 return;
             }
 
-            
             List<Path> backups = Files.list(backupDir)
                 .filter(Files::isDirectory)
-                .sorted()
-                .collect(java.util.stream.Collectors.toList());
+                .sorted((a, b) -> b.getFileName().toString().compareTo(a.getFileName().toString()))
+                .collect(Collectors.toList());
 
-         
-            if (backups.size() > keepCount) {
-                for (int i = 0; i < backups.size() - keepCount; i++) {
-                    deleteDirectory(backups.get(i));
-                }
+            if (backups.size() <= keepCount) {
+                return;
+            }
+
+            for (int i = keepCount; i < backups.size(); i++) {
+                deleteDirectory(backups.get(i));
             }
         } catch (IOException e) {
-            System.err.println("Kļūda dzēšot vecās rezerves kopijas: " + e.getMessage());
+            throw new RuntimeException("⚠ Neizdevās notīrīt vecās rezerves kopijas: " + e.getMessage());
         }
     }
 
-    private static void deleteDirectory(Path directory) throws IOException {
-        Files.walk(directory)
-            .sorted(java.util.Comparator.reverseOrder())
-            .forEach(path -> {
-                try {
-                    Files.delete(path);
-                } catch (IOException e) {
-                    System.err.println("Neizdevās izdzēst: " + path);
-                }
-            });
+    private static void deleteDirectory(Path path) throws IOException {
+        Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 }

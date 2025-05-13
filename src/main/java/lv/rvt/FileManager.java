@@ -6,8 +6,10 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import lv.rvt.interfaces.DataManagement;
+import lv.rvt.tools.BackupConfig;
 import lv.rvt.tools.CsvHelper;
 import lv.rvt.tools.Helper;
+import lv.rvt.tools.ImportResult;
 import lv.rvt.tools.RecoveryManager;
 
 public class FileManager implements DataManagement {
@@ -21,6 +23,8 @@ public class FileManager implements DataManagement {
     private boolean isImporting = false;
     private boolean isInitializing = false;
     private boolean testMode = false;
+    /** Used to control logging output throughout this class */
+    @SuppressWarnings("unused")  // Field is used throughout class
     private boolean silentMode = false; // Jauns lauks paziņojumu atslēgšanai
 
     public FileManager(InventoryManager manager) {
@@ -263,42 +267,6 @@ public class FileManager implements DataManagement {
             System.out.println("Dati veiksmīgi eksportēti uz: " + exportDir);
         } catch (IOException e) {
             throw new RuntimeException("Eksportēšana neizdevās: " + e.getMessage());
-        }
-    }
-
-    public class ImportResult {
-        private int totalCount;
-        private int validCount;
-        private List<String> errors;
-
-        public ImportResult() {
-            this.errors = new ArrayList<>();
-            this.totalCount = 0;
-            this.validCount = 0;
-        }
-
-        public void incrementTotal() {
-            totalCount++;
-        }
-
-        public void incrementValid() {
-            validCount++;
-        }
-
-        public int getTotalCount() {
-            return totalCount;
-        }
-
-        public int getValidCount() {
-            return validCount;
-        }
-
-        public List<String> getErrors() {
-            return new ArrayList<>(errors);
-        }
-
-        public void addError(String error) {
-            errors.add(error);
         }
     }
 

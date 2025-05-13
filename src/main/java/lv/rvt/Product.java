@@ -1,6 +1,7 @@
 package lv.rvt;
 
 import lv.rvt.tools.Helper;
+import java.util.Objects;
 
 public class Product {
     private final int id;
@@ -15,10 +16,10 @@ public class Product {
         }
         
         this.id = id;
-        this.name = name;
-        this.category = category;
-        this.price = price;
-        this.quantity = quantity;
+        setName(name);
+        setCategory(category);
+        setPrice(price);
+        setQuantity(quantity);
     }
 
     public int getId() {
@@ -30,8 +31,8 @@ public class Product {
     }
 
     public void setName(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Produkta nosaukums nevar būt tukšs");
+        if (!Helper.validateProductName(name)) {
+            throw new IllegalArgumentException("Nederīgs produkta nosaukums");
         }
         this.name = name;
     }
@@ -63,8 +64,8 @@ public class Product {
     }
 
     public void setQuantity(int quantity) {
-        if (quantity < 0) {
-            throw new IllegalArgumentException("Daudzums nevar būt negatīvs");
+        if (!Helper.validateQuantity(quantity)) {
+            throw new IllegalArgumentException("Daudzums jābūt starp 0 un " + Helper.MAX_QUANTITY);
         }
         this.quantity = quantity;
     }
@@ -77,14 +78,14 @@ public class Product {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (!(obj instanceof Product)) return false;
-        Product other = (Product) obj;
-        return id == other.id;
+        if (obj instanceof Product other) {
+            return id == other.id;
+        }
+        return false;
     }
 
     @Override
     public int hashCode() {
-        return Integer.hashCode(id);
+        return Objects.hash(id);
     }
 }
