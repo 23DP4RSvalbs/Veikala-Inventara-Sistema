@@ -3,12 +3,14 @@ package lv.rvt;
 import java.util.*;
 import lv.rvt.tools.*;
 
+// Klase lietotāja saskarnes pārvaldībai
 public class UserInterface {
     private final InventoryManager manager;
     private final FileManager fileManager;
     private final Scanner scanner;
     private final MessageManager messages;
-
+    private String currentScreen = "";
+    private String[] currentOptions = null;
     public UserInterface() {
         this.manager = new InventoryManager();
         this.fileManager = new FileManager(manager);
@@ -16,6 +18,7 @@ public class UserInterface {
         this.messages = MessageManager.getInstance();
     }
 
+    // Sāk programmas izpildi
     public void start() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -45,13 +48,14 @@ public class UserInterface {
                     exit();
                     return;
                 }
-                // Invalid choice - silently continue
+                // Nederīga izvēle - turpina klusi
             } catch (Exception e) {
                 ConsoleUI.printError(e.getMessage());
             }
         }
     }
 
+    // Attēlo galveno izvēlni
     private void displayMainMenu() {
         String[] options = {
             "1. " + ConsoleUI.BLUE + "Filtrēt inventāru" + ConsoleUI.RESET,
@@ -68,6 +72,7 @@ public class UserInterface {
         ConsoleUI.printMenu(messages.getString("app.title"), options);
     }
 
+    // Filtrē un kārto inventāru
     private void filterInventory() {
         fileManager.checkAndClearIfFilesDeleted();
         String[] options = {
@@ -85,7 +90,7 @@ public class UserInterface {
             
             String choice = scanner.nextLine().trim();
             if (choice.equals("0")) {
-                setCurrentScreen(""); // Reset screen before returning
+                setCurrentScreen(""); // Atiestatīt ekrānu pirms atgriešanās
                 break;
             }
 
@@ -105,6 +110,7 @@ public class UserInterface {
         }
     }
 
+    // Attēlo filtrētus produktus
     private void displayFilteredProducts(List<Product> products, String sortBy, String order) {
         if (products.isEmpty()) {
             ConsoleUI.printError(messages.getString("products.none"));
@@ -139,6 +145,7 @@ public class UserInterface {
         scanner.nextLine();
     }
 
+
     private void displayCategories() {
         ConsoleUI.printTableHeader("Kategorija");
         for (Category category : manager.getCategories()) {
@@ -147,11 +154,6 @@ public class UserInterface {
         ConsoleUI.printTableFooter(1);
     }
 
-
-
-    // Track the current screen/menu being displayed
-    private String currentScreen = "";
-    private String[] currentOptions = null;
 
     private void setCurrentScreen(String screen, String... options) {
         this.currentScreen = screen;
@@ -168,6 +170,7 @@ public class UserInterface {
         }
     }
 
+    // Ievada produkta nosaukumu
     private String getProductName() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -193,6 +196,7 @@ public class UserInterface {
         }
     }
 
+    // Izvēlas produkta kategoriju
     private String getProductCategory() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -220,6 +224,7 @@ public class UserInterface {
         }
     }
 
+    // Ievada produkta cenu
     private Double getProductPrice() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -241,6 +246,7 @@ public class UserInterface {
         }
     }
 
+    // Ievada produkta daudzumu
     private Integer getProductQuantity() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -262,16 +268,17 @@ public class UserInterface {
         }
     }
 
+    // Pievieno jaunu produktu
     private void addProduct() {
         while (true) {
-            // Set up the screen state
+            // Iestata ekrāna stāvokli
             setCurrentScreen(messages.getString("product.add.header"));
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("product.add.header"));
             
             final String name = getProductName();
             if (name == null) {
-                setCurrentScreen(""); // Reset screen before returning
+                setCurrentScreen(""); // Atiestatīt ekrānu pirms atgriešanās
                 return;
             }
             
@@ -279,9 +286,9 @@ public class UserInterface {
             displayCategories();
             System.out.print(ConsoleUI.BLUE + messages.getString("product.category.prompt") + ConsoleUI.RESET + "\n\n");
             ConsoleUI.printHeader(messages.getString("product.add.header"));
-            final String category = getProductCategory(); // This will show categories as part of its flow
+            final String category = getProductCategory(); // Tas parādīs kategorijas kā daļu no sava plūsmas
             if (category == null) {
-                setCurrentScreen(""); // Reset screen before returning
+                setCurrentScreen(""); // Atiestatīt ekrānu pirms atgriešanās
                 return;
             }
             
@@ -290,7 +297,7 @@ public class UserInterface {
             ConsoleUI.printHeader(messages.getString("product.add.header"));
             final Double price = getProductPrice();
             if (price == null) {
-                setCurrentScreen(""); // Reset screen before returning
+                setCurrentScreen(""); // Atiestatīt ekrānu pirms atgriešanās
                 return;
             }
             
@@ -305,15 +312,16 @@ public class UserInterface {
                 ConsoleUI.printSuccess(messages.getString("product.add.success"));
                 System.out.println("\n" + ConsoleUI.BLUE + messages.getString("prompt.continue") + ConsoleUI.RESET);
                 scanner.nextLine();
-                setCurrentScreen(""); // Reset screen before returning
+                setCurrentScreen(""); // Atiestatīt ekrānu pirms atgriešanās
                 return;
             } catch (IllegalArgumentException e) {
-                setCurrentScreen(""); // Reset screen before returning
+                setCurrentScreen(""); // Atiestatīt ekrānu pirms atgriešanās
                 return;
             }
         }
     }
 
+    // Pievieno jaunu kategoriju
     private void addCategory() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -355,15 +363,16 @@ public class UserInterface {
         }
     }
 
+    // Rediģē esošu produktu
     private void editProduct() {
         Product product = null;
         
-        // Get product ID
+        // Iegūst produkta ID
         while (true) {
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.edit.product"));
             
-            // Display products without the enter prompt
+            // Attēlo produktus bez ievades uzvednes
             List<Product> products = manager.getProducts();
             if (!products.isEmpty()) {
                 List<Product> sorted = manager.sortProducts("id", "asc");
@@ -421,7 +430,7 @@ public class UserInterface {
             }
         }
 
-        // Get updates for each field
+        // Iegūst atjauninājumus katram laukam
         String name = null;
         String category = null;
         double price = -1;
@@ -437,7 +446,7 @@ public class UserInterface {
             System.out.println("  Cena: " + String.format("%.2f", product.getPrice()));
             System.out.println("  Daudzums: " + product.getQuantity());
             
-            // Get name
+            // Iegūst nosaukumu
             System.out.print("\n" + ConsoleUI.BLUE + messages.getString("product.name.prompt") + ConsoleUI.RESET);
             String newName = scanner.nextLine().trim();
             if (newName.equalsIgnoreCase("Atcelt")) return;
@@ -449,7 +458,7 @@ public class UserInterface {
                 name = newName;
             }
             
-            // Get category
+            // Iegūst kategoriju
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.edit.product"));
             displayCategories();
@@ -468,7 +477,7 @@ public class UserInterface {
                 category = newCategory;
             }
             
-            // Get price
+            // Iegūst cenu
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.edit.product"));
             System.out.print("\n" + ConsoleUI.BLUE + messages.getString("product.price.prompt") + ConsoleUI.RESET);
@@ -492,7 +501,7 @@ public class UserInterface {
                 }
             }
             
-            // Get quantity
+            // Iegūst daudzumu
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.edit.product"));
             System.out.print("\n" + ConsoleUI.BLUE + messages.getString("product.quantity.prompt") + ConsoleUI.RESET);
@@ -533,6 +542,7 @@ public class UserInterface {
         }
     }
 
+    // Attēlo dzēšanas izvēlni
     private void deleteMenu() {
         String[] options = {
             "1. " + ConsoleUI.BLUE + "Dzēst produktu" + ConsoleUI.RESET,
@@ -558,6 +568,7 @@ public class UserInterface {
         }
     }
 
+    // Dzēš produktu
     private void deleteProduct() {
         Product product = null;
         
@@ -565,7 +576,7 @@ public class UserInterface {
             ConsoleUI.clearScreen();
             ConsoleUI.printHeader(messages.getString("menu.delete.product"));
             
-            // Display products without the enter prompt
+            // Attēlo produktus bez ievades uzvednes
             List<Product> products = manager.getProducts();
             if (!products.isEmpty()) {
                 List<Product> sorted = manager.sortProducts("id", "asc");
@@ -654,7 +665,7 @@ public class UserInterface {
                 }
             }
             
-            // Invalid input, continue loop
+            // Nederīga ievade, turpina ciklu
             if (!confirm.equals("j") && !confirm.equals("n")) {
                 ConsoleUI.printError("Lūdzu ievadiet j vai n");
                 scanner.nextLine();
@@ -663,6 +674,7 @@ public class UserInterface {
         }
     }
 
+    // Dzēš kategoriju
     private void deleteCategory() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -715,6 +727,7 @@ public class UserInterface {
         }
     }
 
+    // Attēlo datu eksporta/importa izvēlni
     private void dataExportImport() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -760,6 +773,7 @@ public class UserInterface {
         }
     }
 
+    // Meklē inventārā
     private void searchInventory() {
         String[] options = {
             "1. " + ConsoleUI.BLUE + messages.getString("search.by.name") + ConsoleUI.RESET,
@@ -793,6 +807,7 @@ public class UserInterface {
         }
     }
 
+    // Meklē pēc nosaukuma
     private void searchByName() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -819,6 +834,7 @@ public class UserInterface {
         }
     }
 
+    // Meklē pēc kategorijas
     private void searchByCategory() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -845,6 +861,7 @@ public class UserInterface {
         }
     }
 
+    // Meklē pēc cenas diapazona
     private void searchByPriceRange() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -924,6 +941,7 @@ public class UserInterface {
         }
     }
 
+    // Meklē pēc daudzuma diapazona
     private void searchByQuantityRange() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -1003,6 +1021,7 @@ public class UserInterface {
         }
     }
 
+    // Filtrē pēc cenas
     private void filterByPrice() {
         String[] options = {
             "1. " + ConsoleUI.BLUE + messages.getString("products.sort.price.asc") + ConsoleUI.RESET,
@@ -1033,6 +1052,7 @@ public class UserInterface {
         }
     }
 
+    // Filtrē pēc kategorijas
     private void filterByCategory() {
         while (true) {
             ConsoleUI.clearScreen();
@@ -1048,7 +1068,7 @@ public class UserInterface {
                 return;
             }
             
-            // If empty input, just continue the loop
+            // Ja ievade tukša, turpina ciklu
             if (category.isEmpty()) {
                 continue;
             }
@@ -1066,6 +1086,7 @@ public class UserInterface {
         }
     }
 
+    // Filtrē pēc daudzuma
     private void filterByQuantity() {
         String[] options = {
             "1. " + messages.getString("products.sort.quantity") + " ↑",
@@ -1096,6 +1117,7 @@ public class UserInterface {
         }
     }
 
+    // Konfigurē rezerves kopiju izmaiņas
     private void configureBackupChanges() {
         String[] options = {
             "1. " + ConsoleUI.BLUE + messages.getString("backup.changes.1") + ConsoleUI.RESET,
@@ -1148,6 +1170,7 @@ public class UserInterface {
         }
     }
 
+    // Attēlo iestatījumu izvēlni
     private void showSettings() {
         String[] options = {
             "1. " + ConsoleUI.BLUE + messages.getString("settings.backup.changes") + ConsoleUI.RESET,
@@ -1188,6 +1211,7 @@ public class UserInterface {
         }
     }
 
+    // Attēlo lietošanas instrukcijas
     private void showUsageInstructions() {
         String[] options = {messages.getString("menu.back")};
         
@@ -1227,6 +1251,7 @@ public class UserInterface {
         System.out.println("   - Sekojiet līdzi rezerves kopijām");
     }
 
+    // Aprēķina inventāru
     private void calculateInventory() {
         ConsoleUI.clearScreen();
         ConsoleUI.printHeader("INVENTĀRA APRĒĶINI");
@@ -1265,6 +1290,7 @@ public class UserInterface {
         scanner.nextLine();
     }
 
+    // Beidz programmu
     private void exit() {
         fileManager.saveData();
         ConsoleUI.clearScreen();

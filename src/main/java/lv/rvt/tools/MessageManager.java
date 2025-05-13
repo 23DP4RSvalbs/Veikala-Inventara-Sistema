@@ -2,6 +2,7 @@ package lv.rvt.tools;
 
 import java.util.*;
 
+// Klase valodu un ziņojumu pārvaldīšanai
 public class MessageManager {
     private static MessageManager instance;
     private ResourceBundle messages;
@@ -13,11 +14,11 @@ public class MessageManager {
         currentLanguage = config.getProperty("app.language");
         if (currentLanguage == null) {
             currentLanguage = "lv";
-            config.setProperty("app.language", currentLanguage);
         }
         loadMessages();
     }
 
+    // Atgriež vienīgo MessageManager instanci
     public static MessageManager getInstance() {
         if (instance == null) {
             instance = new MessageManager();
@@ -25,17 +26,17 @@ public class MessageManager {
         return instance;
     }
 
+    // Ielādē ziņojumus atbilstoši izvēlētajai valodai
     private void loadMessages() {
         try {
             messages = ResourceBundle.getBundle(BASE_NAME, Locale.of(currentLanguage));
         } catch (MissingResourceException e) {
-            System.err.println("Failed to load messages for language: " + currentLanguage);
-            // Fallback to Latvian
-            currentLanguage = "lv";
+            System.err.println("Nevar atrast ziņojumu failu valodai: " + currentLanguage);
             messages = ResourceBundle.getBundle(BASE_NAME, Locale.of("lv"));
         }
     }
 
+    // Atgriež ziņojumu pēc atslēgas
     public String getString(String key) {
         try {
             return messages.getString(key);
@@ -51,19 +52,14 @@ public class MessageManager {
     public void setLanguage(String language) {
         if (!language.equals(currentLanguage)) {
             currentLanguage = language;
-            ConfigManager.getInstance().setProperty("app.language", language);
-            loadMessages();
-            
-            // Notify UI components of language change
             notifyLanguageChange();
         }
     }
 
     private void notifyLanguageChange() {
-        // Save current language preference to config
         ConfigManager.getInstance().setProperty("app.language", currentLanguage);
         
-        // Reload messages
+
         loadMessages();
     }
 
@@ -76,11 +72,12 @@ public class MessageManager {
         }
     }
 
+    // Formatē ziņojumu ar parametriem
     public String formatMessage(String key, Object... args) {
         try {
             return String.format(getString(key), args);
         } catch (Exception e) {
-            return "!" + key + "!";
+            return key;
         }
     }
 }
