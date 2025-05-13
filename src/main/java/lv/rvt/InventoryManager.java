@@ -4,23 +4,42 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lv.rvt.tools.Helper;
 
+// Klase inventāra pārvaldībai - produktu un kategoriju uzturēšanai
 public class InventoryManager {
     private final List<Product> products = new ArrayList<>();
     private final List<Category> categories = new ArrayList<>();
     private int nextProductId = 1;
     private FileManager fileManager;
 
+    // Iestata FileManager instanci
     public void setFileManager(FileManager fileManager) {
         this.fileManager = fileManager;
     }
 
+    // Atrod nākamo brīvo ID
+    private int findNextAvailableId() {
+        Set<Integer> usedIds = products.stream()
+            .map(Product::getId)
+            .collect(Collectors.toSet());
+        
+        int candidateId = nextProductId;
+        while (usedIds.contains(candidateId)) {
+            candidateId++;
+        }
+        nextProductId = candidateId + 1;
+        return candidateId;
+    }
+
+    // Saglabā izmaiņas failos
     private void saveChanges() {
         if (fileManager != null) {
             fileManager.saveData();
         }
     }
 
-    // Products
+    // === Produktu pārvaldības metodes ===
+
+    // Pievieno jaunu produktu
     public Product addProduct(String name, String category, double price, int quantity) {
         if (!Helper.validateProductData(name, category, price, quantity)) {
             return null;
@@ -30,12 +49,14 @@ public class InventoryManager {
             return null;
         }
         
-        Product product = new Product(nextProductId++, name, category, price, quantity);
+        int newId = findNextAvailableId();
+        Product product = new Product(newId, name, category, price, quantity);
         products.add(product);
         saveChanges();
         return product;
     }
 
+    // Pievieno ielādētu produktu (bez saglabāšanas)
     public void addLoadedProduct(Product product) {
         if (product == null) return;
         
@@ -45,6 +66,7 @@ public class InventoryManager {
         }
     }
 
+    // Rediģē esošu produktu
     public void editProduct(int id, String name, String category, double price, int quantity) {
         Product product = findProductById(id);
         if (product == null) return;
@@ -68,6 +90,7 @@ public class InventoryManager {
         saveChanges();
     }
 
+    // Dzēš produktu pēc ID
     public void deleteProduct(int id) {
         Product product = findProductById(id);
         if (product != null) {
@@ -76,6 +99,7 @@ public class InventoryManager {
         }
     }
 
+    // Parāda visus produktus
     public void showAllProducts() {
         if (products.isEmpty()) {
             System.out.println("Nav produktu!");
@@ -86,6 +110,9 @@ public class InventoryManager {
         }
     }
 
+    // === Meklēšanas metodes ===
+
+    // Meklē produktus pēc kritērija un atslēgvārda
     public void searchProducts(String criterion, String keyword) {
         final String searchCriterion = criterion.toLowerCase();
         final String searchKeyword = keyword.toLowerCase();
@@ -101,6 +128,7 @@ public class InventoryManager {
         }
     }
 
+    // Pārbauda, vai produkts atbilst meklēšanas kritērijam
     private boolean matchesSearch(final Product p, final String criterion, final String keyword) {
         if (criterion.equals("id")) {
             return String.valueOf(p.getId()).contains(keyword);
@@ -116,6 +144,7 @@ public class InventoryManager {
         return false;
     }
 
+    // Meklē produktus pēc atslēgvārda visos laukos
     public List<Product> searchProducts(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return new ArrayList<>();
@@ -134,6 +163,7 @@ public class InventoryManager {
         return results;
     }
 
+    // Meklē produktus pēc nosaukuma
     public List<Product> searchByName(String name) {
         return products.stream()
             .filter(p -> p.getName().toLowerCase().contains(name.toLowerCase()))
@@ -158,7 +188,9 @@ public class InventoryManager {
             .collect(Collectors.toList());
     }
 
-    // Categories
+    // === Kategoriju pārvaldības metodes ===
+
+    // Pievieno jaunu kategoriju
     public void addCategory(String categoryName) {
         if (!Helper.validateCategory(categoryName)) {
             return;
@@ -174,6 +206,7 @@ public class InventoryManager {
         }
     }
 
+    // Parāda visas kategorijas
     public void showAllCategories() {
         if (categories.isEmpty()) {
             System.out.println("Nav nevienas kategorijas");
@@ -184,6 +217,7 @@ public class InventoryManager {
         categories.forEach(cat -> System.out.println("- " + cat.getName()));
     }
 
+    // Pārbauda, vai kategorija eksistē
     public boolean categoryExists(String categoryName) {
         if (categoryName == null || categoryName.trim().isEmpty()) {
             return false;
@@ -193,6 +227,7 @@ public class InventoryManager {
             .anyMatch(name -> name.equalsIgnoreCase(categoryName.trim()));
     }
 
+    // Pārbauda, vai kategorijā ir produkti
     public boolean hasProductsInCategory(String categoryName) {
         if (categoryName == null || categoryName.trim().isEmpty()) {
             return false;
@@ -211,6 +246,9 @@ public class InventoryManager {
         saveChanges();
     }
 
+    // === Statistikas metodes ===
+
+    // Aprēķina kopējo inventāra vērtību
     public double calculateTotalInventoryValue() {
         double total = 0;
         for (Product product : products) {
@@ -244,6 +282,7 @@ public class InventoryManager {
         return stats;
     }
 
+    // Iegūst produktus ar zemu krājumu
     public List<Product> getLowStockProducts(int threshold) {
         return products.stream()
             .filter(p -> p.getQuantity() <= threshold)
@@ -251,6 +290,7 @@ public class InventoryManager {
             .collect(Collectors.toList());
     }
 
+    // Iegūst vidējo cenu pēc kategorijas
     public double getAveragePriceByCategory(String category) {
         return products.stream()
             .filter(p -> p.getCategory().equals(category))
@@ -281,13 +321,15 @@ public class InventoryManager {
             .orElse(null);
     }
 
+    // Iegūst dārgāko kategoriju
     public Map.Entry<String, Double> getMostExpensiveCategory() {
         return getCategoryStatistics().entrySet().stream()
             .max(Map.Entry.comparingByValue())
             .orElse(null);
     }
 
-    // Getters and utility methods
+    // === Getter metodes un palīgmetodes ===
+
     public List<Product> getProducts() {
         return products;
     }
@@ -302,13 +344,13 @@ public class InventoryManager {
             .findFirst()
             .orElse(null);
     }
-
     public List<Product> getProductsByCategory(String category) {
         return products.stream()
             .filter(p -> p.getCategory().equalsIgnoreCase(category))
             .collect(Collectors.toList());
     }
 
+    // Sakārto produktus pēc kritērija un kārtības
     public List<Product> sortProducts(String criterion, String order) {
         List<Product> sorted = new ArrayList<>(products);
         Comparator<Product> comp = null;
@@ -332,6 +374,7 @@ public class InventoryManager {
         return sorted;
     }
 
+    // Iegūst produktu skaitu pēc kategorijas
     public Map<String, Integer> getProductCountByCategory() {
         return products.stream()
             .collect(Collectors.groupingBy(

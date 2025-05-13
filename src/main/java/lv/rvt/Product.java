@@ -3,6 +3,7 @@ package lv.rvt;
 import lv.rvt.tools.Helper;
 import java.util.Objects;
 
+// Klase, kas reprezentē produktu veikala inventāra sistēmā
 public class Product {
     private final int id;
     private String name;
@@ -10,9 +11,10 @@ public class Product {
     private double price;
     private int quantity;
 
+    // Konstruktors jauna produkta izveidei
     public Product(int id, String name, String category, double price, int quantity) {
         if (id <= 0) {
-            throw new IllegalArgumentException("ID jābūt pozitīvam skaitlim");
+            throw new IllegalArgumentException("ID nevar būt mazāks vai vienāds ar 0");
         }
         
         this.id = id;
@@ -22,14 +24,17 @@ public class Product {
         setQuantity(quantity);
     }
 
+
     public int getId() {
         return id;
     }
+
 
     public String getName() {
         return name;
     }
 
+    // Iestata produkta nosaukumu, pārbaudot tā derīgumu
     public void setName(String name) {
         if (!Helper.validateProductName(name)) {
             throw new IllegalArgumentException("Nederīgs produkta nosaukums");
@@ -37,16 +42,19 @@ public class Product {
         this.name = name;
     }
 
+
     public String getCategory() {
         return category;
     }
 
+
     public void setCategory(String category) {
         if (!Helper.validateCategory(category)) {
-            throw new IllegalArgumentException("Nederīgs kategorijas formāts");
+            throw new IllegalArgumentException("Nederīga kategorija");
         }
         this.category = category;
     }
+
 
     public double getPrice() {
         return price;
@@ -54,36 +62,40 @@ public class Product {
 
     public void setPrice(double price) {
         if (!Helper.validatePrice(price)) {
-            throw new IllegalArgumentException("Cena jābūt starp 0 un " + Helper.MAX_PRICE);
+            throw new IllegalArgumentException("Nederīga cena");
         }
         this.price = price;
     }
 
+ 
     public int getQuantity() {
         return quantity;
     }
 
     public void setQuantity(int quantity) {
         if (!Helper.validateQuantity(quantity)) {
-            throw new IllegalArgumentException("Daudzums jābūt starp 0 un " + Helper.MAX_QUANTITY);
+            throw new IllegalArgumentException("Nederīgs daudzums");
         }
         this.quantity = quantity;
     }
 
+    // Pārraksta toString metodi, lai attēlotu produkta informāciju
     @Override
     public String toString() {
-        return String.format("[%d] %s (%s) - %.2f EUR, %d gab.", 
-                           id, name, category, price, quantity);
+        return String.format("ID: %d, Nosaukums: %s, Kategorija: %s, Cena: %.2f€, Daudzums: %d",
+                id, name, category, price, quantity);
     }
 
+    // Pārraksta equals metodi, lai salīdzinātu produktus
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof Product other) {
-            return id == other.id;
-        }
-        return false;
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Product other = (Product) obj;
+        return id == other.id;
     }
 
+    // Pārraksta hashCode metodi, lai nodrošinātu korektu darbību ar HashSet un HashMap
     @Override
     public int hashCode() {
         return Objects.hash(id);

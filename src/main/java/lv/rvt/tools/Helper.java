@@ -5,17 +5,18 @@ import java.util.List;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
+// Palīgklase dažādu validācijas un palīgfunkciju nodrošināšanai
 public class Helper {
     private static final Pattern VALID_NAME_PATTERN = Pattern.compile("^[a-zA-Z_]+$");
     private static final Pattern VALID_NUMBER_PATTERN = Pattern.compile("^-?\\d*\\.?\\d+$");
     public static final double MAX_PRICE = 1000000.0;
     public static final int MAX_QUANTITY = 1000000;
     private static final String STANDARD_NUMBER_FORMAT_ERROR = "⚠ Cenai un Daudzumam jābūt formātā: 00000000.00";
-
     public static String getStandardNumberFormatError() {
         return STANDARD_NUMBER_FORMAT_ERROR;
     }
 
+    // Pārbauda, vai ievadītā virkne atbilst derīga vārda formātam
     public static boolean validateString(String input) {
         if (input == null || input.trim().isEmpty()) {
             return false;
@@ -39,6 +40,7 @@ public class Helper {
         return quantity >= 0 && quantity <= MAX_QUANTITY;
     }
 
+    // Pārbauda visus produkta datus vienlaicīgi
     public static boolean validateProductData(String name, String category, double price, int quantity) {
         return validateProductName(name) &&
                validateCategory(category) &&
@@ -46,6 +48,7 @@ public class Helper {
                validateQuantity(quantity);
     }
 
+    // Pārbauda, vai ievadītā virkne ir derīgs skaitlis
     public static boolean validateNumericInput(String input) {
         return validateString(input) && VALID_NUMBER_PATTERN.matcher(input).matches();
     }
@@ -55,6 +58,7 @@ public class Helper {
         return input.trim().replaceAll("[^a-zA-Z0-9_]", "_");
     }
 
+    // Iekšējā klase validācijas rezultātu apstrādei
     public static class ValidationResult {
         private List<String> errors = new ArrayList<>();
 
@@ -70,14 +74,15 @@ public class Helper {
             return new ArrayList<>(errors);
         }
 
+        // Pārbauda, vai validācijas rezultāts ir derīgs
         public boolean isValid() {
             return errors.isEmpty();
         }
 
+        // Atgriež validācijas kļūdu skaitu
         public int getErrorCount() {
             return errors.size();
         }
-
         public boolean containsError(String errorText) {
             return errors.stream().anyMatch(err -> err.contains(errorText));
         }
@@ -92,15 +97,18 @@ public class Helper {
         }
     }
 
+    // Validē CSV faila produkta rindu
     public static ValidationResult validateCsvProductLine(String[] parts) {
         ValidationResult result = new ValidationResult();
 
+        // Pārbauda lauku skaitu
         if (parts == null || parts.length != 5) {
             result.addError("Nepareizs kolonnu skaits. Vajadzīgs: ID,Nosaukums,Kategorija,Cena,Daudzums");
             return result;
         }
 
         try {
+            // Validē ID lauku
             int id = Integer.parseInt(parts[0].trim());
             if (id <= 0) {
                 result.addError("ID jābūt pozitīvam skaitlim: " + parts[0]);
@@ -109,15 +117,18 @@ public class Helper {
             result.addError("Nederīgs ID formāts: " + parts[0]);
         }
 
+        // Validē produkta nosaukuma lauku
         if (!validateProductName(parts[1])) {
             result.addError("Nederīgs produkta nosaukums: " + parts[1] + " (atļauti tikai burti, cipari un _)");
         }
 
+        // Validē kategorijas lauku
         if (!validateCategory(parts[2])) {
             result.addError("Nederīgs kategorijas nosaukums: " + parts[2] + " (atļauti tikai burti, cipari un _)");
         }
 
         try {
+            // Validē cenas lauku
             double price = Double.parseDouble(parts[3].trim());
             if (!validatePrice(price)) {
                 result.addError("Nederīga cena: " + parts[3] + " (jābūt starp 0 un " + MAX_PRICE + ")");
@@ -127,6 +138,7 @@ public class Helper {
         }
 
         try {
+            // Validē daudzuma lauku
             int quantity = Integer.parseInt(parts[4].trim());
             if (!validateQuantity(quantity)) {
                 result.addError("Nederīgs daudzums: " + parts[4] + " (jābūt starp 0 un " + MAX_QUANTITY + ")");
@@ -138,6 +150,7 @@ public class Helper {
         return result;
     }
 
+    // Validē CSV faila kategorijas rindu
     public static ValidationResult validateCsvCategoryLine(String category) {
         ValidationResult result = new ValidationResult();
         if (!validateCategory(category)) {

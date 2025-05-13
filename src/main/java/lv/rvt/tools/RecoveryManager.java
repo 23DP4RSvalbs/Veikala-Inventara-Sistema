@@ -7,12 +7,14 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// Klase datu atjaunošanas un rezerves kopiju pārvaldībai
 public class RecoveryManager {
     private static final String DATA_DIR = "data";
     private static final String BACKUP_DIR = DATA_DIR + "/backup";
     private static final String PRODUCTS_FILE = DATA_DIR + "/products.csv";
     private static final String CATEGORIES_FILE = DATA_DIR + "/categories.csv";
 
+    // Galvenā metode rezerves kopiju tīrīšanai
     public static void main(String[] args) {
         if (args.length == 2 && args[0].equals("clean")) {
             try {
@@ -27,6 +29,7 @@ public class RecoveryManager {
         }
     }
 
+    // Izveido jaunu rezerves kopiju ar pašreizējo datumu un laiku
     public static void createBackup() {
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         Path backupPath = Paths.get(BACKUP_DIR, timestamp);
@@ -40,6 +43,7 @@ public class RecoveryManager {
         }
     }
 
+    // Atjauno datus no pēdējās rezerves kopijas
     public static void restoreFromLatestBackup() {
         try {
             Path backupDir = Paths.get(BACKUP_DIR);
@@ -48,6 +52,7 @@ public class RecoveryManager {
                 return;
             }
 
+            // Atrod pēdējo rezerves kopiju
             String latestBackup = Files.list(backupDir)
                 .filter(Files::isDirectory)
                 .map(Path::getFileName)
@@ -66,6 +71,7 @@ public class RecoveryManager {
             Path categoriesBackup = backupPath.resolve("categories.csv");
 
             if (Files.exists(productsBackup) && Files.exists(categoriesBackup)) {
+                // Kopē failus no rezerves kopijas
                 Files.copy(productsBackup, Paths.get(PRODUCTS_FILE), StandardCopyOption.REPLACE_EXISTING);
                 Files.copy(categoriesBackup, Paths.get(CATEGORIES_FILE), StandardCopyOption.REPLACE_EXISTING);
                 System.out.println("Dati veiksmīgi atjaunoti no rezerves kopijas: " + backupPath);
@@ -77,6 +83,7 @@ public class RecoveryManager {
         }
     }
 
+    // Notīra vecās rezerves kopijas, atstājot norādīto skaitu jaunāko kopiju
     public static void cleanupOldBackups(int keepCount) {
         if (keepCount < 1) {
             throw new IllegalArgumentException("Must keep at least 1 backup");
@@ -88,6 +95,7 @@ public class RecoveryManager {
                 return;
             }
 
+            // Sakārto kopijas pēc datuma un dzēš vecākās
             List<Path> backups = Files.list(backupDir)
                 .filter(Files::isDirectory)
                 .sorted((a, b) -> b.getFileName().toString().compareTo(a.getFileName().toString()))
@@ -105,6 +113,7 @@ public class RecoveryManager {
         }
     }
 
+    // Rekursīvi dzēš direktoriju un tās saturu
     private static void deleteDirectory(Path path) throws IOException {
         Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
             @Override

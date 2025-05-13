@@ -12,21 +12,20 @@ import lv.rvt.tools.Helper;
 import lv.rvt.tools.ImportResult;
 import lv.rvt.tools.RecoveryManager;
 
+// Klase datu failu pārvaldībai un darbam ar failiem
 public class FileManager implements DataManagement {
     private static final String DATA_DIR = "data";
     private static final String PRODUCTS_FILE = DATA_DIR + "/products.csv";
     private static final String CATEGORIES_FILE = DATA_DIR + "/categories.csv";
     private static final String EXPORT_DIR = DATA_DIR + "/export";
     private static final String BACKUP_DIR = DATA_DIR + "/backup";
-
     private final InventoryManager manager;
+    
     private boolean isImporting = false;
     private boolean isInitializing = false;
     private boolean testMode = false;
-    /** Used to control logging output throughout this class */
-    @SuppressWarnings("unused")  // Field is used throughout class
-    private boolean silentMode = false; // Jauns lauks paziņojumu atslēgšanai
 
+    // Konstruktors ar InventoryManager instanci
     public FileManager(InventoryManager manager) {
         this.manager = manager;
         manager.setFileManager(this);
@@ -36,6 +35,7 @@ public class FileManager implements DataManagement {
         isInitializing = false;
     }
 
+    // Inicializē datu failus, ja tie neeksistē
     private void initializeDataFiles() {
         try {
             Files.createDirectories(Paths.get(DATA_DIR));
@@ -47,6 +47,7 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Izveido datu failus, ja tie neeksistē
     private void createDataFilesIfMissing() {
         try {
             if (!Files.exists(Paths.get(PRODUCTS_FILE))) {
@@ -64,6 +65,7 @@ public class FileManager implements DataManagement {
         return Files.exists(Paths.get(PRODUCTS_FILE)) && Files.exists(Paths.get(CATEGORIES_FILE));
     }
 
+    // Pārbauda un attīra datus, ja faili ir izdzēsti
     public void checkAndClearIfFilesDeleted() {
         if (!bothDataFilesExist()) {
             System.out.println("CSV faili nav atrasti. Notīra atmiņā esošos datus, lai izvairītos no novecojušiem datiem.");
@@ -72,6 +74,7 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Attīra nederīgos produktus
     public void cleanInvalidProducts() {
         List<Product> currentProducts = new ArrayList<>(manager.getProducts());
         List<Product> validProducts = new ArrayList<>();
@@ -95,14 +98,15 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Iestata testa režīmu
     public void setTestMode(boolean testMode) {
         this.testMode = testMode;
-        this.silentMode = testMode; // Testa režīmā atslēdzam paziņojumus
     }
 
+    // Implementē DataManagement interfeisa metodes
     @Override
     public void saveData() {
-        if (testMode) return; // Skip file operations in test mode
+        if (testMode) return; 
         if (!isImporting) {
             createDataFilesIfMissing();
             saveCategories(manager.getCategories(), true);
@@ -113,7 +117,7 @@ public class FileManager implements DataManagement {
 
     @Override
     public void loadData() {
-        if (testMode) return; // Skip file operations in test mode
+        if (testMode) return;
         createDataFilesIfMissing();
         if (bothDataFilesExist()) {
             ImportResult categoryResult = loadAndValidateCategories();
@@ -141,6 +145,7 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Saglabā visus datus
     public void saveAll() {
         createDataFilesIfMissing();
         saveCategories(manager.getCategories(), false);
@@ -148,6 +153,7 @@ public class FileManager implements DataManagement {
         cleanInvalidProducts();
     }
 
+    // Ielādē visus datus
     public void loadAll() {
         createDataFilesIfMissing();
         if (bothDataFilesExist()) {
@@ -160,8 +166,9 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Saglabā produktus failā
     public void saveProducts(List<Product> products, boolean incrementBackup) {
-        if (testMode) return; // Skip file operations in test mode
+        if (testMode) return; // Izlaiž failu operācijas testa režīmā
         boolean fileExisted = Files.exists(Paths.get(PRODUCTS_FILE));
         if (products.isEmpty() && fileExisted && !isImporting) {
             System.out.println("Izlaista tukša produktu saraksta saglabāšana, lai saglabātu esošo products.csv");
@@ -191,6 +198,7 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Ielādē produktus no faila
     public void loadProducts() {
         loadAndValidateProducts();
         if (manager.getProducts().size() > 0) {
@@ -199,10 +207,11 @@ public class FileManager implements DataManagement {
         cleanInvalidProducts();
     }
 
+    // Saglabā kategorijas failā
     private void saveCategories(List<Category> categories, boolean incrementBackup) {
-        if (testMode) return; // Skip file operations in test mode
+        if (testMode) return; // Izlaiž failu operācijas testa režīmā
         boolean fileExisted = Files.exists(Paths.get(CATEGORIES_FILE));
-        // Filter out any invalid categories before saving
+        // Filtrē nederīgās kategorijas pirms saglabāšanas
         List<Category> validCategories = categories.stream()
             .filter(c -> Helper.validateCategory(c.getName()))
             .collect(Collectors.toList());
@@ -229,10 +238,12 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Ielādē kategorijas no faila
     public void loadCategories() {
         loadAndValidateCategories();
     }
 
+    // Eksportē datus uz CSV formātu
     public void exportData(String format) {
         if (!format.equalsIgnoreCase("csv")) {
             throw new IllegalArgumentException("Tikai CSV formāts ir atbalstīts");
@@ -270,6 +281,7 @@ public class FileManager implements DataManagement {
         }
     }
 
+    // Ielādē un validē kategorijas no faila
     private ImportResult loadAndValidateCategories() {
         ImportResult result = new ImportResult();
         Set<String> uniqueCategories = new HashSet<>();
@@ -311,11 +323,11 @@ public class FileManager implements DataManagement {
             return result;
         }
 
-        // Update categories if we have valid ones
+        // Atjaunina kategorijas, ja ir derīgas
         if (result.getValidCount() > 0) {
             manager.getCategories().addAll(tempCategories);
             
-            // Update the categories file to contain only valid categories
+            // Atjaunina kategoriju failu, lai saturētu tikai derīgas kategorijas
             try (PrintWriter writer = new PrintWriter(new FileWriter(CATEGORIES_FILE))) {
                 for (String category : validLines) {
                     writer.println(category);
@@ -330,12 +342,13 @@ public class FileManager implements DataManagement {
         return result;
     }
 
+    // Ielādē un validē produktus no faila
     private ImportResult loadAndValidateProducts() {
         ImportResult result = new ImportResult();
         Set<Integer> uniqueIds = new HashSet<>();
         List<Product> tempProducts = new ArrayList<>();
 
-        // Skip if file doesn't exist
+        // Izlaiž, ja fails neeksistē
         if (!Files.exists(Paths.get(PRODUCTS_FILE))) {
             System.out.println("Produktu fails nav atrasts.");
             return result;
@@ -344,20 +357,20 @@ public class FileManager implements DataManagement {
         try {
             List<String> lines = Files.readAllLines(Paths.get(PRODUCTS_FILE));
             
-            // Skip empty file
+            // Izlaiž tukšu failu
             if (lines.isEmpty()) {
                 System.out.println("Produktu fails ir tukšs.");
                 return result;
             }
 
-            // Validate header
+            // Validē virsrakstu
             String header = lines.get(0).trim();
             if (!header.equals("ID,ProductName,Category,Price,Quantity")) {
                 result.addError("Nederīgs faila formāts - trūkst vai nepareiza galvene");
                 return result;
             }
 
-            // Process each data line
+            // Apstrādā katru datu rindu
             for (int i = 1; i < lines.size(); i++) {
                 String line = lines.get(i).trim();
                 if (line.isEmpty()) continue;
@@ -371,7 +384,7 @@ public class FileManager implements DataManagement {
                 }
 
                 try {
-                    // Parse and validate ID
+                    // Parsē un validē ID
                     int id = Integer.parseInt(parts[0].trim());
                     if (!uniqueIds.add(id)) {
                         result.addError(String.format("Rinda %d: Dublēts produkta ID: %d", i + 1, id));
@@ -383,13 +396,13 @@ public class FileManager implements DataManagement {
                     double price = Double.parseDouble(parts[3].trim());
                     int quantity = Integer.parseInt(parts[4].trim());
 
-                    // Validate category exists
+                    // Validē, vai kategorija eksistē
                     if (!manager.categoryExists(category)) {
                         result.addError(String.format("Rinda %d: Nederīga kategorija '%s'", i + 1, category));
                         continue;
                     }
 
-                    // Validate price and quantity
+                    // Validē cenu un daudzumu
                     if (!Helper.validatePrice(price)) {
                         result.addError(String.format("Rinda %d: Nederīga cena '%.2f' (jābūt starp 0 un %.2f)", i + 1, price, Helper.MAX_PRICE));
                         continue;
@@ -399,7 +412,7 @@ public class FileManager implements DataManagement {
                         continue;
                     }
 
-                    // Create the product
+                    // Izveido produktu
                     Product product = new Product(id, name, category, price, quantity);
                     tempProducts.add(product);
                     result.incrementValid();
@@ -411,7 +424,7 @@ public class FileManager implements DataManagement {
                 }
             }
 
-            // Update products if we have valid ones
+            // Atjaunina produktus, ja ir derīgi
             if (!tempProducts.isEmpty()) {
                 manager.getProducts().clear();
                 manager.getProducts().addAll(tempProducts);
@@ -424,17 +437,18 @@ public class FileManager implements DataManagement {
         return result;
     }
 
+    // Importē datus no CSV formāta
     @Override
     public void importData(String format) {
         if (!format.equalsIgnoreCase("csv")) {
             throw new IllegalArgumentException("⚠ Tikai CSV formāts ir atbalstīts");
         }
 
-        // Store existing data
+        // Saglabā esošos datus
         List<Product> existingProducts = new ArrayList<>(manager.getProducts());
         List<Category> existingCategories = new ArrayList<>(manager.getCategories());
 
-        // Create backup before making changes
+        // Veido rezerves kopiju pirms izmaiņām
         System.out.println("✓ Veido rezerves kopiju pirms importēšanas...");
         RecoveryManager.createBackup();
 
@@ -442,7 +456,7 @@ public class FileManager implements DataManagement {
         isImporting = true;
 
         try {
-            // Process categories first
+            // Apstrādā kategorijas vispirms
             System.out.println("✓ Importē kategorijas...");
             ImportResult categoryResult = loadAndValidateCategories();
             System.out.printf("Kategoriju validācija: %d/%d derīgas%n", 
@@ -453,7 +467,7 @@ public class FileManager implements DataManagement {
                 categoryResult.getErrors().forEach(error -> System.out.println("KĻŪDA: " + error));
             }
 
-            // Save valid categories
+            // Saglabā derīgās kategorijas
             if (categoryResult.getValidCount() > 0) {
                 saveCategories(manager.getCategories(), false);
             } else {
@@ -462,7 +476,7 @@ public class FileManager implements DataManagement {
                 manager.getCategories().addAll(existingCategories);
             }
 
-            // Now process products since categories are loaded
+            // Tagad apstrādā produktus, jo kategorijas ir ielādētas
             System.out.println("\nImportē produktus...");
             ImportResult productResult = loadAndValidateProducts();
             System.out.printf("Produktu validācija: %d/%d derīgi%n", 
@@ -485,7 +499,7 @@ public class FileManager implements DataManagement {
 
         } catch (Exception e) {
             System.out.println("\nKļūda importa laikā: " + e.getMessage());
-            // Restore original data
+            // Atjauno sākotnējos datus
             manager.getCategories().clear();
             manager.getCategories().addAll(existingCategories);
             manager.getProducts().clear();

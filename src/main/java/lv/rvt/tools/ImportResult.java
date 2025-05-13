@@ -3,11 +3,13 @@ package lv.rvt.tools;
 import java.util.ArrayList;
 import java.util.List;
 
+// Klase importēšanas rezultātu glabāšanai un apstrādei
 public class ImportResult {
     private int totalCount;
     private int validCount;
     private List<String> errors;
 
+    // Konstruktors jauna importēšanas rezultāta izveidei
     public ImportResult() {
         this.errors = new ArrayList<>();
         this.totalCount = 0;
@@ -21,6 +23,7 @@ public class ImportResult {
     public void incrementValid() {
         validCount++;
     }
+
 
     public int getTotalCount() {
         return totalCount;
