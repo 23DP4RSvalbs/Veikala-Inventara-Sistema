@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 import lv.rvt.interfaces.DataManagement;
 import lv.rvt.tools.CsvHelper;
 import lv.rvt.tools.Helper;
@@ -94,7 +95,7 @@ public class FileManager implements DataManagement {
             createDataFilesIfMissing();
             saveCategories(manager.getCategories(), true);
             cleanInvalidProducts();
-            BackupConfig.getInstance().incrementChanges();
+            saveProducts(manager.getProducts(), true);
         }
     }
 
@@ -169,7 +170,7 @@ public class FileManager implements DataManagement {
                 BackupConfig.getInstance().incrementChanges();
             }
             if (!fileExisted) {
-                System.out.println("✓ Tā kā products.csv fails neeksistēja, tas tika izveidots no jauna.");
+                System.out.println("Tā kā products.csv fails neeksistēja, tas tika izveidots no jauna.");
             }
         } catch (IOException e) {
             throw new RuntimeException("⚠ Neizdevās saglabāt produktus: " + e.getMessage());
@@ -186,9 +187,20 @@ public class FileManager implements DataManagement {
 
     private void saveCategories(List<Category> categories, boolean incrementBackup) {
         boolean fileExisted = Files.exists(Paths.get(CATEGORIES_FILE));
-        System.out.println("Saglabā categories.csv ar " + categories.size() + " kategorijām");
+        // Filter out any invalid categories before saving
+        List<Category> validCategories = categories.stream()
+            .filter(c -> Helper.validateCategory(c.getName()))
+            .collect(Collectors.toList());
+        
+        if (validCategories.size() < categories.size()) {
+            System.out.println("⚠ " + (categories.size() - validCategories.size()) + " nederīgas kategorijas tika noņemtas");
+            categories.clear();
+            categories.addAll(validCategories);
+        }
+        
+        System.out.println("Saglabā categories.csv ar " + validCategories.size() + " kategorijām");
         try (FileWriter writer = new FileWriter(CATEGORIES_FILE)) {
-            for (Category category : categories) {
+            for (Category category : validCategories) {
                 writer.write(CsvHelper.escapeCsv(category.getName()) + "\n");
             }
             if (incrementBackup) {
@@ -237,7 +249,7 @@ public class FileManager implements DataManagement {
                 }
             }
 
-            System.out.println("✓ Dati veiksmīgi eksportēti uz: " + exportDir);
+            System.out.println("Dati veiksmīgi eksportēti uz: " + exportDir);
         } catch (IOException e) {
             throw new RuntimeException("⚠ Eksportēšana neizdevās: " + e.getMessage());
         }
@@ -287,51 +299,53 @@ public class FileManager implements DataManagement {
         if (!Files.exists(Paths.get(CATEGORIES_FILE))) {
             return result;
         }
+
+        List<Category> tempCategories = new ArrayList<>();
+        List<String> validLines = new ArrayList<>();
         
         try (BufferedReader reader = new BufferedReader(new FileReader(CATEGORIES_FILE))) {
             String line;
             int currentLine = 0;
             while ((line = reader.readLine()) != null) {
                 final int lineNumber = ++currentLine;
-                if (line.trim().isEmpty()) continue;
-                result.incrementTotal();
+                line = line.trim();
+                if (line.isEmpty()) continue;
                 
-                try {
-                    String[] parts = CsvHelper.parseLine(line);
-                    if (parts.length == 0) {
-                        result.addError(String.format("Rinda %d: Tukša rinda", lineNumber));
-                        continue;
-                    }
-                    if (parts.length > 1) {
-                        result.addError(String.format("Rinda %d: Pārāk daudz kolonnu, vajadzīga tikai kategorija", lineNumber));
-                        continue;
-                    }
-                    
-                    String category = parts[0].trim();
-                    if (category.isEmpty()) {
-                        result.addError(String.format("Rinda %d: Tukša kategorija", lineNumber));
-                        continue;
-                    }
-                    
-                    Helper.ValidationResult validation = Helper.validateCsvCategoryLine(category);
-                    if (validation.isValid()) {
-                        if (uniqueCategories.add(category)) {
-                            manager.addCategory(category);
-                            result.incrementValid();
-                        } else {
-                            result.addError(String.format("Rinda %d: Dublēta kategorija '%s'", lineNumber, category));
-                        }
-                    } else {
-                        validation.getErrors().forEach(err -> {
-                            result.addError(String.format("Rinda %d: %s", lineNumber, err));
-                        });
-                    }
-                } catch (Exception e) {
-                    result.addError(String.format("Rinda %d: Kļūda - %s", lineNumber, e.getMessage()));
+                result.incrementTotal();
+                String category = line;
+                
+                if (!Helper.validateCategory(category)) {
+                    result.addError(String.format("Rinda %d: Nederīga kategorija: %s", lineNumber, category));
+                    continue;
+                }
+
+                if (uniqueCategories.add(category)) {
+                    tempCategories.add(new Category(category));
+                    validLines.add(category);
+                    result.incrementValid();
+                } else {
+                    result.addError(String.format("Rinda %d: Dublēta kategorija '%s'", lineNumber, category));
                 }
             }
         } catch (IOException e) {
             result.addError("Neizdevās nolasīt kategoriju failu: " + e.getMessage());
+            return result;
+        }
+
+        // Update categories if we have valid ones
+        if (result.getValidCount() > 0) {
+            manager.getCategories().addAll(tempCategories);
+            
+            // Update the categories file to contain only valid categories
+            try (PrintWriter writer = new PrintWriter(new FileWriter(CATEGORIES_FILE))) {
+                for (String category : validLines) {
+                    writer.println(category);
+                }
+                System.out.println("✓ Kategoriju fails tika atjaunots, dzēšot " + 
+                    (result.getTotalCount() - result.getValidCount()) + " nederīgas kategorijas");
+            } catch (IOException e) {
+                result.addError("Neizdevās atjaunot kategoriju failu: " + e.getMessage());
+            }
         }
         
         return result;
@@ -340,113 +354,94 @@ public class FileManager implements DataManagement {
     private ImportResult loadAndValidateProducts() {
         ImportResult result = new ImportResult();
         Set<Integer> uniqueIds = new HashSet<>();
-        Map<Integer, List<Product>> originalProducts = new HashMap<>();
         List<Product> tempProducts = new ArrayList<>();
-        
+
+        // Skip if file doesn't exist
         if (!Files.exists(Paths.get(PRODUCTS_FILE))) {
+            System.out.println("⚠ Produktu fails nav atrasts.");
             return result;
         }
-        
-        try (BufferedReader reader = new BufferedReader(new FileReader(PRODUCTS_FILE))) {
-            String header = reader.readLine();
-            if (header == null) {
-                result.addError("products.csv ir tukšs vai trūkst galvenes");
-                return result;
-            }
-            if (!header.trim().equals("ID,ProductName,Category,Price,Quantity")) {
-                result.addError("Nederīgs faila formāts - trūkst vai nepareiza galvene: " + header);
+
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(PRODUCTS_FILE));
+            
+            // Skip empty file
+            if (lines.isEmpty()) {
+                System.out.println("⚠ Produktu fails ir tukšs.");
                 return result;
             }
 
-            String line;
-            int currentLine = 1;
-            while ((line = reader.readLine()) != null) {
-                final int lineNumber = ++currentLine;
-                if (line.trim().isEmpty()) {
+            // Validate header
+            String header = lines.get(0).trim();
+            if (!header.equals("ID,ProductName,Category,Price,Quantity")) {
+                result.addError("Nederīgs faila formāts - trūkst vai nepareiza galvene");
+                return result;
+            }
+
+            // Process each data line
+            for (int i = 1; i < lines.size(); i++) {
+                String line = lines.get(i).trim();
+                if (line.isEmpty()) continue;
+
+                result.incrementTotal();
+                String[] parts = CsvHelper.parseLine(line);
+
+                if (parts.length != 5) {
+                    result.addError(String.format("Rinda %d: Nepareizs kolonnu skaits", i + 1));
                     continue;
                 }
-                result.incrementTotal();
-                
+
                 try {
-                    String[] parts = CsvHelper.parseLine(line);
-                    
-                    if (parts.length != 5) {
-                        result.addError(String.format("Rinda %d: Nepareizs kolonnu skaits (%d), vajag 5", lineNumber, parts.length));
-                        continue;
-                    }
-
-                    Helper.ValidationResult validation = Helper.validateCsvProductLine(parts);
-                    if (!validation.isValid()) {
-                        validation.getErrors().forEach(err -> {
-                            result.addError(String.format("Rinda %d: %s", lineNumber, err));
-                        });
-                        continue;
-                    }
-
-                    int id;
-                    try {
-                        id = Integer.parseInt(parts[0].trim());
-                        if (!uniqueIds.add(id)) {
-                            result.addError(String.format("Rinda %d: Dublēts produkta ID: %d", lineNumber, id));
-                            continue;
-                        }
-                    } catch (NumberFormatException e) {
-                        result.addError(String.format("Rinda %d: Nederīgs ID formāts: %s", lineNumber, parts[0]));
+                    // Parse and validate ID
+                    int id = Integer.parseInt(parts[0].trim());
+                    if (!uniqueIds.add(id)) {
+                        result.addError(String.format("Rinda %d: Dublēts produkta ID: %d", i + 1, id));
                         continue;
                     }
 
                     String name = parts[1].trim();
                     String category = parts[2].trim();
-                    double price;
-                    int quantity;
-                    try {
-                        price = Double.parseDouble(parts[3].trim());
-                        quantity = Integer.parseInt(parts[4].trim());
-                    } catch (NumberFormatException e) {
-                        result.addError(String.format("Rinda %d: Nederīgs cenu vai daudzuma formāts: %s", lineNumber, e.getMessage()));
-                        continue;
-                    }
+                    double price = Double.parseDouble(parts[3].trim());
+                    int quantity = Integer.parseInt(parts[4].trim());
 
+                    // Validate category exists
                     if (!manager.categoryExists(category)) {
-                        result.addError(String.format("Rinda %d: Nederīga kategorija '%s' - kategorija neeksistē", lineNumber, category));
+                        result.addError(String.format("Rinda %d: Nederīga kategorija '%s'", i + 1, category));
                         continue;
                     }
 
+                    // Validate price and quantity
+                    if (!Helper.validatePrice(price)) {
+                        result.addError(String.format("Rinda %d: Nederīga cena '%.2f' (jābūt starp 0 un %.2f)", i + 1, price, Helper.MAX_PRICE));
+                        continue;
+                    }
+                    if (!Helper.validateQuantity(quantity)) {
+                        result.addError(String.format("Rinda %d: Nederīgs daudzums '%d' (jābūt starp 0 un %d)", i + 1, quantity, Helper.MAX_QUANTITY));
+                        continue;
+                    }
+
+                    // Create the product
                     Product product = new Product(id, name, category, price, quantity);
-                    originalProducts.computeIfAbsent(id, k -> new ArrayList<>()).add(product);
+                    tempProducts.add(product);
                     result.incrementValid();
+
+                } catch (NumberFormatException e) {
+                    result.addError(String.format("Rinda %d: Nederīgs skaitlis: %s", i + 1, e.getMessage()));
                 } catch (Exception e) {
-                    result.addError(String.format("Rinda %d: Kļūda - %s", lineNumber, e.getMessage()));
+                    result.addError(String.format("Rinda %d: %s", i + 1, e.getMessage()));
                 }
             }
+
+            // Update products if we have valid ones
+            if (!tempProducts.isEmpty()) {
+                manager.getProducts().clear();
+                manager.getProducts().addAll(tempProducts);
+            }
+
         } catch (IOException e) {
             result.addError("Neizdevās nolasīt produktu failu: " + e.getMessage());
         }
 
-        Set<Integer> loadedIds = new HashSet<>();
-        for (Map.Entry<Integer, List<Product>> entry : originalProducts.entrySet()) {
-            int originalId = entry.getKey();
-            List<Product> products = entry.getValue();
-
-            Product firstProduct = products.get(0);
-            int newId = originalId;
-            if (!loadedIds.add(originalId)) {
-                newId = manager.getNextAvailableId();
-            }
-            tempProducts.add(new Product(newId, firstProduct.getName(), 
-                firstProduct.getCategory(), firstProduct.getPrice(), firstProduct.getQuantity()));
-
-            for (int i = 1; i < products.size(); i++) {
-                Product p = products.get(i);
-                int nextId = manager.getNextAvailableId();
-                tempProducts.add(new Product(nextId, p.getName(), 
-                    p.getCategory(), p.getPrice(), p.getQuantity()));
-            }
-        }
-
-        manager.getProducts().clear();
-        manager.getProducts().addAll(tempProducts);
-        
         return result;
     }
 
@@ -456,36 +451,68 @@ public class FileManager implements DataManagement {
             throw new IllegalArgumentException("⚠ Tikai CSV formāts ir atbalstīts");
         }
 
-        if (!bothDataFilesExist()) {
-            System.out.println("⚠ Nevar importēt: nepieciešami gan products.csv, gan categories.csv faili");
-            return;
-        }
+        // Store existing data
+        List<Product> existingProducts = new ArrayList<>(manager.getProducts());
+        List<Category> existingCategories = new ArrayList<>(manager.getCategories());
+
+        // Create backup before making changes
+        System.out.println("✓ Veido rezerves kopiju pirms importēšanas...");
+        RecoveryManager.createBackup();
 
         System.out.println("✓ Sāk importēšanas procesu...");
         isImporting = true;
-        
-        ImportResult categoryResult = loadAndValidateCategories();
-        ImportResult productResult = loadAndValidateProducts();
-        
-        System.out.printf("Kategoriju validācija: %d/%d derīgas%n", 
-            categoryResult.getValidCount(), categoryResult.getTotalCount());
-        System.out.printf("Produktu validācija: %d/%d derīgi%n", 
-            productResult.getValidCount(), productResult.getTotalCount());
-        
-        if (!categoryResult.getErrors().isEmpty() || !productResult.getErrors().isEmpty()) {
-            System.out.println("⚠ Daži ieraksti izlaisti validācijas kļūdu dēļ:");
-            categoryResult.getErrors().forEach(error -> System.out.println("⚠ " + error));
-            productResult.getErrors().forEach(error -> System.out.println("⚠ " + error));
-        }
 
-        isImporting = false;
-        System.out.println("✓ Saglabā derīgos importētos datus...");
-        RecoveryManager.createBackup();
-        if (categoryResult.getValidCount() > 0) {
-            saveCategories(manager.getCategories(), false);
+        try {
+            // Process categories first
+            System.out.println("✓ Importē kategorijas...");
+            ImportResult categoryResult = loadAndValidateCategories();
+            System.out.printf("Kategoriju validācija: %d/%d derīgas%n", 
+                categoryResult.getValidCount(), categoryResult.getTotalCount());
+            
+            if (categoryResult.getErrors().size() > 0) {
+                System.out.println("\nKategoriju validācijas kļūdas:");
+                categoryResult.getErrors().forEach(error -> System.out.println("⚠ " + error));
+            }
+
+            // Save valid categories
+            if (categoryResult.getValidCount() > 0) {
+                saveCategories(manager.getCategories(), false);
+            } else {
+                System.out.println("⚠ Nav derīgu kategoriju, izmanto esošās kategorijas");
+                manager.getCategories().clear();
+                manager.getCategories().addAll(existingCategories);
+            }
+
+            // Now process products since categories are loaded
+            System.out.println("\n✓ Importē produktus...");
+            ImportResult productResult = loadAndValidateProducts();
+            System.out.printf("Produktu validācija: %d/%d derīgi%n", 
+                productResult.getValidCount(), productResult.getTotalCount());
+            
+            if (productResult.getErrors().size() > 0) {
+                System.out.println("\nProduktu validācijas kļūdas:");
+                productResult.getErrors().forEach(error -> System.out.println("⚠ " + error));
+            }
+
+            if (productResult.getValidCount() > 0) {
+                cleanInvalidProducts();
+                saveProducts(manager.getProducts(), false);
+                System.out.println("✓ Imports veiksmīgi pabeigts");
+            } else {
+                System.out.println("⚠ Nav derīgu produktu, atjauno sākotnējos datus");
+                manager.getProducts().clear();
+                manager.getProducts().addAll(existingProducts);
+            }
+
+        } catch (Exception e) {
+            System.out.println("\n⚠ Kļūda importa laikā: " + e.getMessage());
+            // Restore original data
+            manager.getCategories().clear();
+            manager.getCategories().addAll(existingCategories);
+            manager.getProducts().clear();
+            manager.getProducts().addAll(existingProducts);
+        } finally {
+            isImporting = false;
         }
-        cleanInvalidProducts();
-        saveProducts(manager.getProducts(), false);
-        System.out.println("✓ Imports veiksmīgi pabeigts ar derīgiem datiem.");
     }
 }

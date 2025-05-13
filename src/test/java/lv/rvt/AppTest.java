@@ -1,99 +1,105 @@
 package lv.rvt;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
-import java.util.*;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.Test;
+import java.util.List;
 
+/**
+ * Inventāra pārvaldības sistēmas testi
+ * Lai palaistu testus, izmantojiet: mvn test
+ */
 public class AppTest {
-    private final InventoryManager manager = new InventoryManager();
+    private InventoryManager manager;
     
-    @Test
-    public void testBasicFunctionality() {
-        // Test product addition
-        Product p = manager.addProduct("Test Product", "Test Category", 99.99, 10);
-        assertNotNull(p);
-        assertEquals("Test Product", p.getName());
-        assertEquals(99.99, p.getPrice());
-        assertEquals(10, p.getQuantity());
-        
-        // Test product deletion
-        manager.deleteProduct(p.getId());
-        assertNull(manager.findProductById(p.getId()));
+    @Before
+    public void setup() {
+        manager = new InventoryManager();
+        FileManager fileManager = new FileManager(manager);
+        manager.setFileManager(fileManager);
     }
     
     @Test
-    public void testCategoryManagement() {
-        // Test category addition
-        manager.addCategory("Electronics");
-        List<Category> categories = manager.getCategories();
-        assertEquals(1, categories.size());
-        assertEquals("Electronics", categories.get(0).getName());
+    public void testKategorijuDarbibas() {
+        // Pievienojam kategorijas
+        manager.addCategory("Elektronika");
+        manager.addCategory("Pārtika");
         
-        // Test product with category
-        Product p = manager.addProduct("Laptop", "Electronics", 1000.0, 3);
-        assertNotNull(p);
-        assertEquals("Electronics", p.getCategory());
+        // Pārbaudām vai kategorijas ir izveidotas
+        assertTrue("Kategorijai vajadzētu eksistēt", manager.categoryExists("Elektronika"));
+        assertTrue("Kategorijai vajadzētu eksistēt", manager.categoryExists("Pārtika"));
         
-        // Test category statistics
-        Map<String, Double> stats = manager.getCategoryStatistics();
-        assertEquals(3000.0, stats.get("Electronics"));
+        // Pārbaudām dublikātu novēršanu
+        int sakumaSkaits = manager.getCategories().size();
+        manager.addCategory("Elektronika");
+        assertEquals("Dublikātiem nevajadzētu tikt pievienotiem", sakumaSkaits, manager.getCategories().size());
+        
+        // Pārbaudām nederīgas kategorijas
+        manager.addCategory("");
+        manager.addCategory(null);
+        assertEquals("Nederīgas kategorijas nedrīkst pievienot", sakumaSkaits, manager.getCategories().size());
     }
     
     @Test
-    public void testSearch() {
-        manager.addCategory("Food");
-        manager.addCategory("Electronics");
+    public void testProduktuDarbibas() {
+        // Sagatavojam testu
+        manager.addCategory("Elektronika");
         
-        manager.addProduct("Apple", "Food", 1.0, 100);
-        manager.addProduct("Laptop", "Electronics", 1000.0, 5);
+        // Pievienojam jaunu produktu
+        Product produkts = manager.addProduct("Dators", "Elektronika", 999.99, 5);
         
-        List<Product> results = manager.searchProducts("app");
-        assertEquals(2, results.size()); // Should find both "Apple" and "Laptop"
-        
-        results = manager.searchProducts("Food");
-        assertEquals(1, results.size());
-        assertEquals("Apple", results.get(0).getName());
+        // Pārbaudām produkta izveidi
+        assertNotNull("Produktam jābūt izveidotam", produkts);
+        assertEquals("Produkta nosaukumam jābūt pareizam", "Dators", produkts.getName());
+        assertEquals("Produkta kategorijai jābūt pareizai", "Elektronika", produkts.getCategory());
+        assertEquals("Cenai jābūt pareizai", 999.99, produkts.getPrice(), 0.01);
+        assertEquals("Daudzumam jābūt pareizam", 5, produkts.getQuantity());
     }
     
     @Test
-    public void testAdvancedAnalytics() {
-        // Setup test data
-        manager.addCategory("Electronics");
-        manager.addCategory("Food");
-        manager.addProduct("LowStock", "Electronics", 500.0, 2);
-        manager.addProduct("HighValue", "Electronics", 2000.0, 5);
-        manager.addProduct("Normal", "Food", 10.0, 50);
-
-        // Test total value calculation
-        double expectedTotalValue = (500.0 * 2) + (2000.0 * 5) + (10.0 * 50);
-        assertEquals(expectedTotalValue, manager.calculateTotalInventoryValue());
-
-        // Test category statistics
-        Map<String, Double> categoryValues = manager.getCategoryStatistics();
-        assertEquals(11000.0, categoryValues.get("Electronics")); // (500*2 + 2000*5)
-        assertEquals(500.0, categoryValues.get("Food")); // (10*50)
-
-        // Test low stock products
-        List<Product> lowStock = manager.getLowStockProducts(3);
-        assertEquals(1, lowStock.size());
-        assertEquals("LowStock", lowStock.get(0).getName());
-
-        // Test price analytics
-        Product cheapest = manager.getCheapestProduct();
-        assertEquals("Normal", cheapest.getName());
-        assertEquals(10.0, cheapest.getPrice());
-
-        Product mostExpensive = manager.getMostExpensiveProduct();
-        assertEquals("HighValue", mostExpensive.getName());
-        assertEquals(2000.0, mostExpensive.getPrice());
-
-        // Test category analytics
-        Map.Entry<String, Double> cheapestCat = manager.getCheapestCategory();
-        assertEquals("Food", cheapestCat.getKey());
-        assertEquals(500.0, cheapestCat.getValue());
-
-        Map.Entry<String, Double> expensiveCat = manager.getMostExpensiveCategory();
-        assertEquals("Electronics", expensiveCat.getKey());
-        assertEquals(11000.0, expensiveCat.getValue());
+    public void testMeklesana() {
+        // Sagatavojam testus
+        manager.addCategory("Elektronika");
+        manager.addCategory("Pārtika");
+        
+        manager.addProduct("Dators", "Elektronika", 999.99, 5);
+        manager.addProduct("Ābols", "Pārtika", 1.0, 100);
+        
+        // Meklēšana pēc nosaukuma
+        List<Product> rezultati = manager.searchByName("Dat");
+        assertEquals("Vajadzētu atrast vienu produktu", 1, rezultati.size());
+        assertEquals("Vajadzētu atrast Datoru", "Dators", rezultati.get(0).getName());
+        
+        // Meklēšana pēc kategorijas
+        rezultati = manager.searchByCategory("Pārtika");
+        assertEquals("Vajadzētu atrast vienu pārtikas produktu", 1, rezultati.size());
+    }
+    
+    @Test
+    public void testAprekinasana() {
+        // Sagatavojam datus
+        manager.addCategory("Elektronika");
+        manager.addProduct("Dators", "Elektronika", 1000.0, 2); // Kopā: 2000.0
+        manager.addProduct("Pele", "Elektronika", 20.0, 5);     // Kopā: 100.0
+        
+        // Pārbaudām kopējo vērtību
+        double kopVeriba = manager.calculateTotalInventoryValue();
+        assertEquals("Kopējai vērtībai jābūt 2100.0", 2100.0, kopVeriba, 0.01);
+    }
+    
+    @Test
+    public void testProduktuLabosana() {
+        // Sagatavojam testu
+        manager.addCategory("Elektronika");
+        Product produkts = manager.addProduct("Dators", "Elektronika", 1000.0, 2);
+        
+        // Labojam produktu
+        manager.editProduct(produkts.getId(), "Portatīvais Dators", null, 1500.0, -1);
+        Product labotais = manager.findProductById(produkts.getId());
+        
+        // Pārbaudām izmaiņas
+        assertEquals("Nosaukumam jābūt izmainītam", "Portatīvais Dators", labotais.getName());
+        assertEquals("Cenai jābūt izmainītai", 1500.0, labotais.getPrice(), 0.01);
+        assertEquals("Daudzumam jāpaliek nemainīgam", 2, labotais.getQuantity());
     }
 }

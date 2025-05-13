@@ -8,8 +8,9 @@ import java.util.regex.Pattern;
 public class Helper {
     private static final Pattern VALID_NAME_PATTERN = Pattern.compile("^[a-zA-Z_]+$");
     private static final Pattern VALID_NUMBER_PATTERN = Pattern.compile("^-?\\d*\\.?\\d+$");
-    private static final double MAX_PRICE = 1000000.0;
-    private static final int MAX_QUANTITY = 1000000;
+    public static final double MAX_PRICE = 1000000.0;
+    public static final int MAX_QUANTITY = 1000000;
+    private static final String STANDARD_NUMBER_FORMAT_ERROR = "⚠ Cenai un Daudzumam jābūt formātā: 00000000.00";
 
     public static boolean validateCategory(String category) {
         if (category == null || category.trim().isEmpty()) {
@@ -51,6 +52,10 @@ public class Helper {
     public static String sanitizeInput(String input) {
         if (input == null) return "";
         return input.trim().replaceAll("[^a-zA-Z0-9_]", "_");
+    }
+
+    public static String getStandardNumberFormatError() {
+        return STANDARD_NUMBER_FORMAT_ERROR;
     }
 
     public static class ValidationResult {
@@ -138,7 +143,7 @@ public class Helper {
                     " (jābūt starp 0 un " + MAX_PRICE + ")");
             }
         } catch (NumberFormatException e) {
-            result.addError("Nederīgs cenas formāts: " + parts[3]);
+            result.addError(getStandardNumberFormatError());
         }
 
         // Validate quantity
@@ -149,7 +154,7 @@ public class Helper {
                     " (jābūt starp 0 un " + MAX_QUANTITY + ")");
             }
         } catch (NumberFormatException e) {
-            result.addError("Nederīgs daudzuma formāts: " + parts[4]);
+            result.addError(getStandardNumberFormatError());
         }
 
         return result;

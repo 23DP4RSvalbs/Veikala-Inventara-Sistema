@@ -70,7 +70,7 @@ public class RecoveryManager {
             if (Files.exists(productsSource) && Files.exists(categoriesSource)) {
                 Files.copy(productsSource, Paths.get(PRODUCTS_FILE), StandardCopyOption.REPLACE_EXISTING);
                 Files.copy(categoriesSource, Paths.get(CATEGORIES_FILE), StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("✓ Dati veiksmīgi atjaunoti no rezerves kopijas: " + backupPath);
+                System.out.println("Dati veiksmīgi atjaunoti no rezerves kopijas: " + backupPath);
             } else {
                 System.out.println("⚠ Rezerves kopijas faili nav atrasti: " + backupPath);
             }

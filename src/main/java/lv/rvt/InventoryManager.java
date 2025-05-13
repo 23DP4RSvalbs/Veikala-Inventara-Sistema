@@ -142,13 +142,19 @@ public class InventoryManager {
 
     public List<Product> searchByCategory(String category) {
         return products.stream()
-            .filter(p -> p.getCategory().equals(category))
+            .filter(p -> p.getCategory().toLowerCase().contains(category.toLowerCase()))
             .collect(Collectors.toList());
     }
 
     public List<Product> searchByPriceRange(double min, double max) {
         return products.stream()
             .filter(p -> p.getPrice() >= min && p.getPrice() <= max)
+            .collect(Collectors.toList());
+    }
+
+    public List<Product> searchByQuantityRange(int min, int max) {
+        return products.stream()
+            .filter(p -> p.getQuantity() >= min && p.getQuantity() <= max)
             .collect(Collectors.toList());
     }
 
@@ -185,6 +191,24 @@ public class InventoryManager {
         return categories.stream()
             .map(Category::getName)
             .anyMatch(name -> name.equalsIgnoreCase(categoryName.trim()));
+    }
+
+    public boolean hasProductsInCategory(String categoryName) {
+        if (categoryName == null || categoryName.trim().isEmpty()) {
+            return false;
+        }
+        
+        return products.stream()
+            .anyMatch(p -> p.getCategory().equalsIgnoreCase(categoryName.trim()));
+    }
+    
+    public void deleteCategory(String categoryName) {
+        if (categoryName == null || categoryName.trim().isEmpty()) {
+            return;
+        }
+        
+        categories.removeIf(c -> c.getName().equalsIgnoreCase(categoryName.trim()));
+        saveChanges();
     }
 
     public double calculateTotalInventoryValue() {
